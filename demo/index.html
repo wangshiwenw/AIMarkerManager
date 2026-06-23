@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>筑客通 AI市场经理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#07111F',
+            ink2: '#0B1220',
+            panel: '#101B2D',
+            panel2: '#111827',
+            line: 'rgba(148,163,184,0.16)',
+            primary: '#18D39E',
+            sky: '#38BDF8',
+            ok: '#22C55E',
+            warn: '#F59E0B',
+            danger: '#EF4444'
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body class="bg-ink text-slate-50">
+  <section id="landingPage" class="landing-page">
+    <header class="landing-nav">
+      <div class="landing-brand">
+        <div class="brand-logo"><img src="./assets/zhuketong-logo.png" alt="筑客通" /></div>
+        <div>
+          <h1>筑客通 AI市场经理</h1>
+        </div>
+      </div>
+      <nav class="landing-links">
+        <button>系统能力</button>
+        <button>系统预览</button>
+        <button>使用流程</button>
+      </nav>
+    </header>
+    <div class="landing-hero">
+      <h2><span>装修公司专属的</span><strong>AI 市场经理</strong></h2>
+      <p>自动接入巨量引擎，帮你完成抖音投放、素材测试、成本优化和每日汇报。</p>
+      <button class="landing-cta" data-action="start-app">开始使用</button>
+    </div>
+  </section>
+
+  <div id="appShell" class="app-shell app-hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo"><img src="./assets/zhuketong-logo.png" alt="筑客通" /></div>
+        <div>
+          <h1>筑客通 AI市场经理</h1>
+        </div>
+      </div>
+      <nav id="nav" class="nav"></nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">AI市场经理驾驶舱</h2>
+        </div>
+        <div class="top-status">
+          <span class="tag good">上海星辰装饰</span>
+          <span class="tag good">巨量已授权</span>
+          <span class="tag good">可投账号 3/4</span>
+          <span class="tag blue">余额 ¥18,600</span>
+          <div class="user-menu">
+            <div class="avatar">A</div>
+            <div class="user-copy">
+              <b>Admin</b>
+              <span>老板账号</span>
+            </div>
+            <button class="mini-btn" data-action="logout">退出登录</button>
+          </div>
+        </div>
+      </header>
+
+      <section id="view" class="view"></section>
+    </main>
+  </div>
+
+  <div id="planModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>AI已生成投放计划草案</h3>
+        <button class="mini-btn" data-action="close-modal">关闭</button>
+      </div>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button class="btn" data-action="confirm-plan">确认创建</button>
+        <button class="btn secondary" data-action="close-modal">暂不创建</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="./js/data.js"></script>
+  <script src="./js/components.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
