@@ -1,0 +1,22 @@
+# macOS system metadata
+.DS_Store
+**/.DS_Store
+
+# Local archives / packaged demo outputs
+*.zip
+
+# Office temporary lock files
+.~*
+~$*
+
+# Editor and local runtime noise
+.vscode/
+.idea/
+*.log
+
+# Dependency/build caches, if added later
+node_modules/
+dist/
+build/
+.cache/
+.tmp/

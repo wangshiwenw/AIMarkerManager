@@ -1,7 +1,51 @@
 (function () {
   const data = window.DEMO_DATA;
   const UI = window.UI;
-  const state = { page: 'home', dashTab: 'current', dashFilter: '全部投放', dashGrain: '按小时', dashMetric: 'multi', dashSelected: 'all', dashBusiness: '全部业务', businessFilter: '全部', businessView: 'grid', pendingPlan: null };
+  function initialPublishCombos() {
+    return [
+      { name: '组合A', account: '星辰老房翻新号', material: '老房前后对比 v2.1 / 报价避坑口播', budget: '45%', reason: '账号近7天老房翻新成本低，素材复投稳定', status: '待发布' },
+      { name: '组合B', account: '浦东门店号', material: '报价避坑口播 v1.3', budget: '35%', reason: '适合价格敏感但咨询明确的人群', status: '待发布' },
+      { name: '组合C', account: '设计师阿林', material: '老房设计师讲解 v1', budget: '20%', reason: '小预算测试设计需求', status: '待发布' }
+    ];
+  }
+
+  const publishAuditTimers = new Map();
+  let aiLoaderTimer = null;
+  let aiLoaderTextTimer = null;
+
+  const state = {
+    page: 'home',
+    dashFilter: '汇总',
+    dashEntity: '全部投放',
+    dashGrain: '按小时',
+    planView: 'list',
+    selectedPlanId: 'plan-oldhouse',
+    planStep: null,
+    createStep: 0,
+    createMaxStep: 0,
+    createStage: 'input',
+    createPublish: initialPublishCombos(),
+    createComboSerial: 4,
+    pendingPlan: null
+  };
+
+  function clearPublishAuditTimers() {
+    publishAuditTimers.forEach(timer => clearTimeout(timer));
+    publishAuditTimers.clear();
+  }
+
+  function scheduleAuditPass(index, delay = 900) {
+    if (publishAuditTimers.has(index)) clearTimeout(publishAuditTimers.get(index));
+    const timer = setTimeout(() => {
+      publishAuditTimers.delete(index);
+      const item = state.createPublish[index];
+      if (!item || item.status !== '审核中') return;
+      item.status = '审核通过';
+      render();
+      toast(`${item.name} 审核通过`);
+    }, delay);
+    publishAuditTimers.set(index, timer);
+  }
 
   function $(selector) {
     return document.querySelector(selector);
@@ -14,33 +58,110 @@
     setTimeout(() => el.classList.remove('show'), 2200);
   }
 
-  function setPage(page) {
-    state.page = page;
-    $('#pageTitle').textContent = data.nav.find(item => item.id === page).label;
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
+  function hideAiFullscreenLoader() {
+    const loader = $('#aiInlineLoader');
+    if (!loader) return;
+    loader.classList.remove('show');
+    loader.setAttribute('aria-hidden', 'true');
+    clearTimeout(aiLoaderTimer);
+    clearInterval(aiLoaderTextTimer);
+    aiLoaderTimer = null;
+    aiLoaderTextTimer = null;
+  }
+
+  function showAiFullscreenLoader(onComplete) {
+    state.createStage = 'parsing';
     render();
+    const loader = $('#aiInlineLoader');
+    const textEl = $('#aiLoadingText');
+    if (!loader || !textEl) {
+      onComplete?.();
+      return;
+    }
+    const texts = [
+      '正在识别投放目标、人群地域、预算周期与素材方向',
+      '正在拆解获客策略，生成计划配置草案',
+      '正在匹配可投抖音号与可复用素材',
+      '正在生成投放组合与预算分配建议'
+    ];
+    let index = 0;
+    textEl.textContent = texts[index];
+    loader.classList.add('show');
+    loader.setAttribute('aria-hidden', 'false');
+    clearTimeout(aiLoaderTimer);
+    clearInterval(aiLoaderTextTimer);
+    aiLoaderTextTimer = setInterval(() => {
+      index = (index + 1) % texts.length;
+      textEl.style.opacity = '0';
+      setTimeout(() => {
+        textEl.textContent = texts[index];
+        textEl.style.opacity = '1';
+      }, 160);
+    }, 820);
+    aiLoaderTimer = setTimeout(() => {
+      hideAiFullscreenLoader();
+      onComplete?.();
+    }, 3100);
   }
 
-  function startApp() {
-    $('#landingPage')?.classList.add('app-hidden');
-    $('#appShell')?.classList.remove('app-hidden');
+  function aiInlineLoader() {
+    return `
+      <div class="ai-inline-loader show" id="aiInlineLoader" aria-hidden="false">
+        <div class="ai-bg-grid"></div>
+        <div class="ai-particles"></div>
+        <div class="ai-loader-content">
+          <div class="ai-core">
+            <div class="ai-ring ring-1"></div>
+            <div class="ai-ring ring-2"></div>
+            <div class="ai-ring ring-3"></div>
+            <div class="ai-orb">AI</div>
+          </div>
+          <div class="ai-loader-title">AI 正在解析投放任务</div>
+          <div class="ai-loader-subtitle" id="aiLoadingText">正在识别投放目标、人群地域、预算周期与素材方向</div>
+          <div class="ai-loading-steps">
+            <span>识别需求</span>
+            <span>拆解策略</span>
+            <span>匹配素材</span>
+            <span>生成方案</span>
+          </div>
+          <div class="ai-progress-bar">
+            <div class="ai-progress-line"></div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
-  function renderNav() {
-    $('#nav').innerHTML = data.nav.map(item => `
-      <button class="nav-btn ${item.id === state.page ? 'active' : ''}" data-page="${item.id}">
-        <span class="nav-icon">${item.icon || '•'}</span>
-        <span class="nav-label">${item.label}</span>
-      </button>
-    `).join('');
+  function tag(text, tone = 'blue') {
+    return UI.tag(text, tone);
   }
 
-  function points(values, width, height, pad = 18) {
+  function budgetValue(value) {
+    return Number(String(value || '').replace(/[^\d.]/g, '')) || 0;
+  }
+
+  function comboBudgetTotal() {
+    return state.createPublish.reduce((sum, item) => sum + budgetValue(item.budget), 0);
+  }
+
+  function statusTone(status) {
+    if (status === '投流中' || status === '可投流') return 'good';
+    if (status === '视频审核中' || status === '待发布') return 'warn';
+    if (status === '审核未过') return 'bad';
+    if (status === '待配置') return 'gray';
+    return 'blue';
+  }
+
+  function toneColor(tone) {
+    return tone === 'good' ? '#18D39E' : tone === 'bad' ? '#EF4444' : tone === 'warn' ? '#F59E0B' : '#38BDF8';
+  }
+
+  function points(values, width, height, pad = 8) {
     const min = Math.min(...values);
     const max = Math.max(...values);
     const span = max - min || 1;
     return values.map((value, index) => {
-      const x = pad + (index * (width - pad * 2)) / (values.length - 1);
+      const x = pad + index * ((width - pad * 2) / (values.length - 1));
       const y = height - pad - ((value - min) / span) * (height - pad * 2);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
@@ -55,53 +176,12 @@
     `;
   }
 
-  function businessSpark(values, tone = 'good') {
-    const color = tone === 'warn' ? '#F59E0B' : tone === 'gray' ? '#2F7BFF' : '#18D39E';
-    return `
-      <svg class="business-spark" viewBox="0 0 132 52" aria-hidden="true">
-        <line x1="0" y1="43" x2="132" y2="43" stroke="${color}" stroke-dasharray="2 4" opacity=".35"></line>
-        <polyline points="${points(values, 132, 52, 4)} 128,50 4,50" fill="${color}" opacity=".16"></polyline>
-        <polyline points="${points(values, 132, 52, 4)}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
-      </svg>
-    `;
-  }
-
-  function lineChart({ days, primary, secondary, target, primaryColor = '#2F7BFF', secondaryColor = '#18D39E' }) {
-    const width = 620;
-    const height = 230;
-    const allValues = secondary ? primary.concat(secondary) : primary.concat(target ? [target] : []);
-    const min = Math.min(...allValues);
-    const max = Math.max(...allValues);
-    const span = max - min || 1;
-    const y = value => height - 30 - ((value - min) / span) * (height - 58);
-    const targetLine = target ? `<line x1="38" y1="${y(target).toFixed(1)}" x2="594" y2="${y(target).toFixed(1)}" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="6 6" opacity=".75"></line>` : '';
-    return `
-      <svg class="chart-svg" viewBox="0 0 ${width} ${height}" aria-hidden="true">
-        ${[0, 1, 2, 3].map(i => `<line x1="38" y1="${42 + i * 42}" x2="594" y2="${42 + i * 42}" stroke="rgba(148,163,184,.14)"></line>`).join('')}
-        ${targetLine}
-        <polyline points="${points(primary, width, height, 38)}" fill="none" stroke="${primaryColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-        ${secondary ? `<polyline points="${points(secondary, width, height, 38)}" fill="none" stroke="${secondaryColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>` : ''}
-        ${primary.map((value, index) => {
-          const x = 38 + (index * (width - 76)) / (primary.length - 1);
-          return `<circle cx="${x.toFixed(1)}" cy="${y(value).toFixed(1)}" r="4.5" fill="${primaryColor}"></circle>`;
-        }).join('')}
-        ${days.map((day, index) => {
-          const x = 38 + (index * (width - 76)) / (days.length - 1);
-          return `<text x="${x.toFixed(1)}" y="218" text-anchor="middle" fill="#64748B" font-size="12">${day}</text>`;
-        }).join('')}
-      </svg>
-    `;
-  }
-
   function metricCard(item) {
-    const toneClass = item.tone ? `dash-${item.tone}` : '';
-    const color = item.tone === 'good' ? '#22C55E' : item.tone === 'bad' ? '#EF4444' : item.tone === 'warn' ? '#F59E0B' : item.tone === 'blue' ? '#38BDF8' : '#8B5CF6';
+    const color = toneColor(item.tone);
     return `
-      <div class="dash-metric ${toneClass}">
-        <div class="list-row">
-          <label>${item.label}</label>
-          <span class="dash-icon">${item.icon}</span>
-        </div>
+      <div class="dash-metric dash-${item.tone}">
+        <label>${item.label}</label>
+        <span class="dash-icon">${item.icon}</span>
         <b>${item.value}</b>
         <div class="metric-bottom">
           <span>${item.trend}</span>
@@ -113,499 +193,505 @@
     `;
   }
 
-  function donut(items) {
-    let start = 0;
-    const stops = items.map(item => {
-      const end = start + item.value;
-      const stop = `${item.color} ${start}% ${end}%`;
-      start = end;
-      return stop;
-    }).join(', ');
-    return `
-      <div class="donut-wrap">
-        <div class="donut" style="background: conic-gradient(${stops})"><span>¥19,860<small>总消耗</small></span></div>
-        <div class="donut-legend">${items.map(item => `
-          <div><i style="background:${item.color}"></i><b>${item.label}</b><span>${item.value}%</span><em>${item.amount}</em></div>
-        `).join('')}</div>
+  function renderNav() {
+    $('#nav').innerHTML = data.nav.map(item => `
+      <button class="nav-btn ${item.id === state.page ? 'active' : ''}" data-page="${item.id}">
+        <span class="nav-icon">${item.icon}</span>
+        <span class="nav-label">${item.label}</span>
+      </button>
+    `).join('');
+  }
+
+  function updateChrome() {
+    document.title = data.productName;
+    document.querySelectorAll('.brand h1, .landing-brand h1').forEach(el => el.textContent = data.productName);
+    const heroStrong = document.querySelector('.landing-hero h2 strong');
+    const heroSpan = document.querySelector('.landing-hero h2 span');
+    const heroCopy = document.querySelector('.landing-hero p');
+    if (heroStrong) heroStrong.textContent = 'AI 投流操盘手';
+    if (heroSpan) heroSpan.textContent = '平台获客闭环';
+    if (heroCopy) heroCopy.textContent = 'AI自动匹配账号与素材，围绕投放组合持续复盘、调预算、换素材、换账号。';
+    updateTopbar();
+  }
+
+  function updateTopbar() {
+    const o = data.operator;
+    $('#pageTitle').textContent = data.nav.find(item => item.id === state.page)?.label || '操盘纵览';
+    $('.top-status').innerHTML = `
+      <span class="tag good">${o.platform}</span>
+      <span class="tag good">${o.giantStatus}</span>
+      <span class="tag good">${o.accountReady}</span>
+      <span class="tag blue">余额 ${o.balance}</span>
+      <div class="user-menu">
+        <div class="avatar">A</div>
+        <div class="user-copy"><b>${o.name}</b><span>${o.role}</span></div>
+        <button class="mini-btn" data-action="logout">退出登录</button>
       </div>
     `;
   }
 
-  function sourceBars(items) {
-    return `<div class="source-bars">${items.map(item => `
-      <div class="source-row">
-        <div class="source-name">${item.label}</div>
-        <div class="source-track"><i style="width:${item.value}%;background:${item.color}"></i></div>
-        <b>${item.value}%</b><span>${item.leads}</span>
+  function isExecutionMonitor() {
+    return state.page === 'acquisition' && state.planView === 'create' && state.createStep === 3;
+  }
+
+  function updateMonitorChrome() {
+    document.body.classList.toggle('exec-monitor-active', isExecutionMonitor());
+    if (!isExecutionMonitor()) {
+      updateTopbar();
+      return;
+    }
+    $('.top-status').innerHTML = `
+      <span class="tag good">● 投放中</span>
+      <span class="tag good">${data.operator.giantStatus}</span>
+      <span class="tag good">${data.operator.accountReady}</span>
+      <span class="tag blue">余额 ${data.operator.balance}</span>
+      <div class="user-menu">
+        <div class="avatar">A</div>
+        <div class="user-copy"><b>${data.operator.name}</b><span>${data.operator.role}</span></div>
+        <button class="mini-btn" data-action="logout">退出登录</button>
+      </div>
+    `;
+  }
+
+  function setPage(page) {
+    state.page = page;
+    updateTopbar();
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
+    render();
+  }
+
+  function startApp() {
+    $('#landingPage')?.classList.add('app-hidden');
+    $('#appShell')?.classList.remove('app-hidden');
+  }
+
+  function actionButtons(labels) {
+    return `<div class="actions">${labels.map(label => `<button class="mini-btn" data-action="quick-action" data-label="${label}">${label}</button>`).join('')}</div>`;
+  }
+
+  function moneyValue(value) {
+    return Number(String(value || '').replace(/[^\d.]/g, '')) || 0;
+  }
+
+  function groupRows(rows, key) {
+    const groups = new Map();
+    rows.forEach(row => {
+      const label = row[key] || '未归类';
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(row);
+    });
+    return Array.from(groups, ([label, items]) => ({ label, rows: items }));
+  }
+
+  function dimensionOptions() {
+    const rows = data.combinations;
+    if (state.dashFilter === '汇总') return [{ label: '全部投放', rows }];
+    const keyMap = {
+      '按计划': 'plan',
+      '按账号': 'account',
+      '按素材': 'material',
+      '按获客方向': 'direction'
+    };
+    return groupRows(rows, keyMap[state.dashFilter] || 'name');
+  }
+
+  function currentScope() {
+    const options = dimensionOptions();
+    const picked = options.find(item => item.label === state.dashEntity) || options[0];
+    state.dashEntity = picked.label;
+    const spend = picked.rows.reduce((sum, row) => sum + moneyValue(row.spend), 0);
+    const leads = picked.rows.reduce((sum, row) => sum + Number(row.leads || 0), 0);
+    const cost = leads ? Math.round(spend / leads) : 0;
+    return { ...picked, spend, leads, cost, comboCount: picked.rows.length };
+  }
+
+  function hashText(text) {
+    return Array.from(text).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  }
+
+  function scopeSeries(scope, n) {
+    const seed = hashText(`${state.dashFilter}-${scope.label}`);
+    const spendBase = Math.max(160, Math.min(980, scope.spend / 3));
+    const leadBase = Math.max(130, Math.min(900, scope.leads * 82));
+    const cpaBase = scope.cost || 240;
+    return {
+      spend: Array.from({ length: n }, (_, i) => spendBase + Math.sin(i * .43 + seed) * 105 + Math.sin(i * .13 + seed / 3) * 58 + i * 3),
+      leads: Array.from({ length: n }, (_, i) => leadBase + Math.sin(i * .47 + seed / 7) * 120 + Math.sin(i * .86) * 48),
+      cpa: Array.from({ length: n }, (_, i) => Math.max(60, cpaBase + Math.sin(i * .34 + seed / 9) * 42 + (i > n * .72 ? 18 : 0)))
+    };
+  }
+
+  function scopeSelector(scope) {
+    const options = dimensionOptions();
+    const selector = state.dashFilter === '汇总' ? '' : `
+      <div class="entity-selector">
+        <span>${state.dashFilter.replace('按', '选择')}</span>
+        ${options.map(item => `<button class="${state.dashEntity === item.label ? 'active' : ''}" data-action="dash-entity" data-entity="${item.label}">${item.label}</button>`).join('')}
+      </div>
+    `;
+    return `
+      <div class="chart-scope-row">
+        ${selector}
+        <div class="scope-summary">
+          <span>当前：${state.dashFilter} · ${scope.label}</span>
+          <b>消耗 ¥${scope.spend.toLocaleString()}</b>
+          <b>客资 ${scope.leads} 条</b>
+          <b>成本 ${scope.cost ? `¥${scope.cost}/条` : '-'}</b>
+          <em>${scope.comboCount} 个组合</em>
+        </div>
+      </div>
+    `;
+  }
+
+  function cockpitChart() {
+    const scope = currentScope();
+    const width = 980;
+    const height = 350;
+    const pad = { left: 60, right: 64, top: 38, bottom: 70 };
+    const n = state.dashGrain === '按天' ? 7 : 42;
+    const { spend, leads, cpa } = scopeSeries(scope, n);
+    const x = index => pad.left + index * ((width - pad.left - pad.right) / (n - 1));
+    const yLeft = value => pad.top + (1180 - value) / 1180 * (height - pad.top - pad.bottom);
+    const yRight = value => pad.top + (480 - value) / 480 * (height - pad.top - pad.bottom);
+    const makeLine = (values, mapper) => values.map((value, index) => `${x(index).toFixed(1)},${mapper(value).toFixed(1)}`).join(' ');
+    const labels = state.dashGrain === '按天' ? ['06-17', '06-18', '06-19', '06-20', '06-21', '06-22', '06-23'] : ['00:00', '06:00', '12:00', '18:00', '00:00', '06:00', '12:00'];
+    const labelIndexes = labels.map((_, index) => Math.round(index * (n - 1) / (labels.length - 1)));
+    const events = [
+      { index: Math.round(n * .22), label: '素材上线', time: '05-28 10:30', detail: '老房前后对比 v2.1', tone: 'blue' },
+      { index: Math.round(n * .43), label: '预算调整', time: '05-29 15:20', detail: '预算 +20%', tone: 'warn' },
+      { index: Math.round(n * .68), label: 'AI扩量操作', time: '05-31 09:45', detail: '建议扩量', tone: 'good' },
+      { index: Math.round(n * .84), label: '预算调整', time: '06-01 16:10', detail: '预算 +15%', tone: 'warn' },
+      { index: Math.round(n * .95), label: '素材上线', time: '06-02 09:20', detail: '报价素材 v1.3', tone: 'blue' }
+    ];
+    const color = item => item.tone === 'good' ? '#18D39E' : item.tone === 'warn' ? '#F59E0B' : '#38BDF8';
+
+    return `
+      <svg class="cockpit-chart" viewBox="0 0 ${width} ${height}" aria-label="投放表现主图">
+        <defs>
+          <linearGradient id="spendFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#2F7BFF" stop-opacity=".18"></stop>
+            <stop offset="100%" stop-color="#2F7BFF" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        ${[0, 1, 2, 3, 4, 5].map(i => `<line x1="${pad.left}" y1="${pad.top + i * 44}" x2="${width - pad.right}" y2="${pad.top + i * 44}" stroke="rgba(148,163,184,.12)"></line>`).join('')}
+        ${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<line x1="${pad.left + i * 108}" y1="${pad.top}" x2="${pad.left + i * 108}" y2="${height - pad.bottom}" stroke="rgba(148,163,184,.07)"></line>`).join('')}
+        <text x="${pad.left - 12}" y="${pad.top - 14}" fill="#94A3B8" font-size="13" font-weight="800">消耗 / 客资</text>
+        <text x="${width - 10}" y="${pad.top - 14}" text-anchor="end" fill="#94A3B8" font-size="13" font-weight="800">客资成本(元)</text>
+        <line x1="${pad.left}" x2="${width - pad.right}" y1="${yRight(180).toFixed(1)}" y2="${yRight(180).toFixed(1)}" stroke="rgba(226,232,240,.7)" stroke-width="2" stroke-dasharray="6 8"></line>
+        <polyline points="${makeLine(spend, yLeft)} ${width - pad.right},${height - pad.bottom} ${pad.left},${height - pad.bottom}" fill="url(#spendFill)"></polyline>
+        <polyline points="${makeLine(spend, yLeft)}" fill="none" stroke="#2F7BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${makeLine(leads, yLeft)}" fill="none" stroke="#18D39E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${makeLine(cpa, yRight)}" fill="none" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        ${events.map(event => {
+          const cx = x(event.index);
+          const c = color(event);
+          const boxX = Math.max(pad.left + 4, Math.min(width - pad.right - 128, cx - 60));
+          const boxY = event.index > n * .75 ? 70 : 54;
+          return `
+            <g>
+              <line x1="${cx}" x2="${cx}" y1="${pad.top}" y2="${height - pad.bottom}" stroke="${c}" stroke-dasharray="5 7" opacity=".5"></line>
+              <circle cx="${cx}" cy="${yRight(cpa[event.index]).toFixed(1)}" r="6" fill="${c}"></circle>
+              <rect x="${boxX}" y="${boxY}" width="128" height="58" rx="5" fill="rgba(2,6,23,.78)" stroke="${c}"></rect>
+              <text x="${boxX + 12}" y="${boxY + 20}" fill="${c}" font-size="13" font-weight="900">${event.label}</text>
+              <text x="${boxX + 12}" y="${boxY + 38}" fill="#E2E8F0" font-size="12">${event.time}</text>
+              <text x="${boxX + 12}" y="${boxY + 53}" fill="#94A3B8" font-size="11">${event.detail}</text>
+            </g>
+          `;
+        }).join('')}
+        ${labelIndexes.map((index, labelIndex) => `<text x="${x(index)}" y="${height - 46}" text-anchor="middle" fill="#64748B" font-size="12">${labels[labelIndex]}</text>`).join('')}
+        <rect x="${x(Math.round(n * .76))}" y="${height - 32}" width="${x(n - 1) - x(Math.round(n * .76))}" height="24" fill="rgba(148,163,184,.13)" stroke="rgba(226,232,240,.72)" rx="2"></rect>
+      </svg>
+    `;
+  }
+
+  function planPerformanceChart(plan) {
+    const width = 820;
+    const height = 260;
+    const pad = { left: 52, right: 48, top: 34, bottom: 48 };
+    const values = plan.trend.length ? plan.trend : [0, 0, 0, 0, 0, 0, 0];
+    const spend = values.map((value, index) => value * 18 + 90 + index * 12);
+    const leads = values.map(value => value * 13 + 80);
+    const cost = values.map((value, index) => Math.max(80, 240 - value * 2 + Math.sin(index) * 22));
+    const x = index => pad.left + index * ((width - pad.left - pad.right) / (values.length - 1));
+    const yLeft = value => pad.top + (1050 - value) / 1050 * (height - pad.top - pad.bottom);
+    const yRight = value => pad.top + (360 - value) / 360 * (height - pad.top - pad.bottom);
+    const line = (arr, mapper) => arr.map((value, index) => `${x(index).toFixed(1)},${mapper(value).toFixed(1)}`).join(' ');
+    const events = [
+      { index: 1, label: '视频审核', tone: 'warn' },
+      { index: 3, label: '自动投流', tone: 'blue' },
+      { index: 5, label: 'AI建议', tone: plan.tone }
+    ];
+    return `
+      <svg class="plan-chart" viewBox="0 0 ${width} ${height}" aria-label="${plan.name}计划表现">
+        ${[0, 1, 2, 3].map(i => `<line x1="${pad.left}" y1="${pad.top + i * 42}" x2="${width - pad.right}" y2="${pad.top + i * 42}" stroke="rgba(148,163,184,.12)"></line>`).join('')}
+        <text x="${pad.left}" y="22" fill="#94A3B8" font-size="12" font-weight="800">${plan.name} · 消耗/客资/成本</text>
+        <line x1="${pad.left}" x2="${width - pad.right}" y1="${yRight(180)}" y2="${yRight(180)}" stroke="rgba(226,232,240,.66)" stroke-dasharray="6 7"></line>
+        <polyline points="${line(spend, yLeft)}" fill="none" stroke="#2F7BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${line(leads, yLeft)}" fill="none" stroke="#18D39E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${line(cost, yRight)}" fill="none" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        ${events.map(event => {
+          const cx = x(Math.min(event.index, values.length - 1));
+          const c = toneColor(event.tone);
+          return `<g><line x1="${cx}" x2="${cx}" y1="${pad.top}" y2="${height - pad.bottom}" stroke="${c}" stroke-dasharray="4 6" opacity=".52"></line><circle cx="${cx}" cy="${yRight(cost[event.index]).toFixed(1)}" r="5" fill="${c}"></circle><text x="${cx + 8}" y="${pad.top + 18}" fill="${c}" font-size="12" font-weight="900">${event.label}</text></g>`;
+        }).join('')}
+        ${['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'].map((label, index) => `<text x="${x(index)}" y="${height - 20}" text-anchor="middle" fill="#64748B" font-size="11">${label}</text>`).join('')}
+      </svg>
+    `;
+  }
+
+  function monitorMetricCards() {
+    const metrics = [
+      { label: '累计消耗', value: '¥12,456.78', delta: '+8.62% ↑', tone: 'bad', icon: 'wallet' },
+      { label: '咨询量', value: '238', delta: '+15.13% ↑', tone: 'bad', icon: 'chat' },
+      { label: '客资成本', value: '¥52.34', delta: '-6.21% ↓', tone: 'good', icon: 'user' },
+      { label: '点击率', value: '2.87%', delta: '+0.32% ↑', tone: 'bad', icon: 'cursor' },
+      { label: '转化率', value: '6.30%', delta: '+0.48% ↑', tone: 'bad', icon: 'filter' },
+      { label: 'ROI', value: '2.41', delta: '+0.19 ↑', tone: 'bad', icon: 'crown' }
+    ];
+    return metrics.map(item => `
+      <div class="exec-metric">
+        <div>
+          <span>${item.label}</span>
+          <b>${item.value}</b>
+          <p class="${item.tone}">较昨日 ${item.delta}</p>
+        </div>
+        <i class="exec-icon ${item.icon}"></i>
+      </div>
+    `).join('');
+  }
+
+  function execTrendChart() {
+    const width = 620;
+    const height = 235;
+    const pad = { left: 50, right: 38, top: 34, bottom: 34 };
+    const series = {
+      spend: [420, 430, 480, 560, 610, 690, 1120, 1450, 1820, 2040, 1900, 1680, 2000, 2160, 2240, 2180, 2120, 2140, 1660, 2040, 1780, 1690],
+      consult: [180, 190, 220, 270, 285, 295, 480, 560, 690, 630, 520, 510, 670, 760, 640, 630, 770, 850, 680, 610, 760, 820],
+      cost: [820, 860, 920, 1000, 1060, 980, 780, 820, 930, 1020, 860, 900, 960, 980, 990, 1040, 1120, 1140, 960, 940, 1020, 1040],
+      ctr: [1220, 1450, 1580, 1480, 1760, 1640, 1620, 1340, 1280, 1500, 1420, 1600, 1680, 1420, 1380, 1520, 1600, 1620, 1540, 1680, 1620, 1500]
+    };
+    const max = 2500;
+    const x = index => pad.left + index * ((width - pad.left - pad.right) / (series.spend.length - 1));
+    const y = value => pad.top + (max - value) / max * (height - pad.top - pad.bottom);
+    const line = values => values.map((value, index) => `${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(' ');
+    return `
+      <svg class="exec-chart" viewBox="0 0 ${width} ${height}" aria-label="数据趋势">
+        ${[0, 1, 2, 3, 4].map(i => `<line x1="${pad.left}" y1="${pad.top + i * 34}" x2="${width - pad.right}" y2="${pad.top + i * 34}" stroke="rgba(148,163,184,.13)" stroke-dasharray="${i === 0 ? 0 : '4 6'}"></line>`).join('')}
+        ${[0, 1, 2, 3, 4, 5].map(i => `<line x1="${pad.left + i * 98}" y1="${pad.top}" x2="${pad.left + i * 98}" y2="${height - pad.bottom}" stroke="rgba(148,163,184,.08)"></line>`).join('')}
+        <polyline points="${line(series.spend)}" fill="none" stroke="#2F8BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${line(series.consult)}" fill="none" stroke="#19D6A0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${line(series.cost)}" fill="none" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${line(series.ctr)}" fill="none" stroke="#FBBF24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        ${['0', '500', '1,000', '1,500', '2,000', '2,500'].map((label, index) => `<text x="16" y="${height - pad.bottom - index * 30}" fill="#7C8BA1" font-size="11">${label}</text>`).join('')}
+        ${['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'].map((label, index) => `<text x="${pad.left + index * 86}" y="${height - 9}" fill="#7C8BA1" font-size="11" text-anchor="middle">${label}</text>`).join('')}
+        <text x="${width - 18}" y="${pad.top + 4}" fill="#7C8BA1" font-size="11">5%</text>
+        <text x="${width - 18}" y="${height - pad.bottom + 2}" fill="#7C8BA1" font-size="11">0%</text>
+      </svg>
+    `;
+  }
+
+  function executionMonitorPage() {
+    const materialImages = data.materialRecommendations.map(item => item.image);
+    const suggestions = [
+      { icon: 'bar', title: '降低高成本地区预算', text: '上海-浦东客资成本 ¥78.6，高于账户均值 48%，建议下调预算。' },
+      { icon: 'chart', title: '放量高CTR素材', text: '素材《老房避坑案例03》CTR达 4.12%，高于账户均值 1.2 倍，建议加大投放。' },
+      { icon: 'pause', title: '暂停低转化账号', text: '账号“轻企联盟_02”转化率仅 1.2%，低于账户均值 70%，建议暂停投放。' }
+    ];
+    const rows = [
+      ['老房翻新获客计划-01', '巨量引擎_官方_01', '老房避坑案例03', '● 投放中', '3,456.78', '128,456', '3,682', '86', '40.20', '2.87%'],
+      ['老房翻新获客计划-02', '巨量引擎_官方_02', '旧房翻新必看指南', '● 投放中', '2,987.55', '96,725', '2,615', '58', '51.51', '2.70%'],
+      ['老房翻新获客计划-03', '穿山甲_优质_01', '30天旧房焕新挑战', '● 投放中', '2,354.22', '78,430', '2,001', '39', '60.37', '2.55%'],
+      ['老房翻新获客计划-04', '巨量引擎_官方_03', '局部改造案例集锦', '● 已暂停', '1,658.23', '45,612', '1,102', '14', '118.45', '2.41%']
+    ];
+    return `
+      <div class="exec-monitor">
+        <div class="exec-alert">
+          <span class="info-dot">i</span>
+          <b>计划已进入投放监控阶段，系统将持续回流消耗、咨询、成本、点击率、转化率等数据，并生成AI调优建议。</b>
+          <em>数据更新时间：2025-05-15 20:30</em>
+          <button class="refresh-btn">↻</button>
+          <button class="range-btn">近24小时⌄</button>
+        </div>
+        <section class="exec-metrics">${monitorMetricCards()}</section>
+        <section class="exec-main-grid">
+          <div class="exec-panel exec-trend">
+            <div class="exec-panel-head">
+              <h3>数据趋势</h3>
+              <div class="exec-legend">
+                <span><i class="blue"></i>消耗(¥)</span>
+                <span><i class="green"></i>咨询量</span>
+                <span><i class="purple"></i>客资成本(¥)</span>
+                <span><i class="yellow"></i>点击率(%)</span>
+              </div>
+              <div class="exec-tools"><span>指标对比</span><i></i><button>按小时⌄</button></div>
+            </div>
+            ${execTrendChart()}
+          </div>
+          <div class="exec-panel exec-advice">
+            <div class="exec-panel-head"><h3>AI调优建议</h3><span class="exec-badge">3 条待处理</span></div>
+            <div class="exec-advice-list">
+              ${suggestions.map(item => `
+                <div class="exec-advice-item">
+                  <span class="exec-advice-icon ${item.icon}"></span>
+                  <div><b>${item.title}</b><p>${item.text}</p></div>
+                  <button class="adopt">采纳建议</button>
+                  <button class="reason">查看原因</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+        <section class="exec-panel exec-table-panel">
+          <h3>投放明细</h3>
+          <div class="exec-table-wrap">
+            <table class="exec-table">
+              <thead><tr>${['计划名称', '投放账号', '素材名称', '状态', '消耗(¥)', '曝光', '点击', '咨询量', '客资成本(¥)', '点击率', '操作'].map(head => `<th>${head}</th>`).join('')}</tr></thead>
+              <tbody>
+                ${rows.map((row, rowIndex) => `
+                  <tr>
+                    ${row.map((cell, index) => `<td class="${index === 3 ? (rowIndex === 3 ? 'paused' : 'running') : ''}">${index === 2 ? `<span class="thumb" style="background-image:url('${materialImages[rowIndex % materialImages.length]}')"></span>` : ''}${cell}</td>`).join('')}
+                    <td><button>加预算</button><button>降预算</button><button class="${rowIndex === 3 ? 'enable' : 'danger'}">${rowIndex === 3 ? '启用' : '暂停'}</button><button>查看详情</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <div class="exec-footer">
+          <button class="footer-btn" data-action="plan-list">返回计划列表</button>
+          <span></span>
+          <button class="footer-btn primary" data-action="go-monitor-dashboard">进入监控大盘</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function aiActionList() {
+    return `<div class="cockpit-side-list">${data.aiActions.map((item, index) => `
+      <div class="cockpit-side-item ${item.tone}">
+        <span class="index-badge ${item.tone}">${index + 1}</span>
+        <div>
+          <div class="advice-meta"><span>${item.time}</span>${tag(item.status, item.status === '未处理' ? 'bad' : item.status === '观察中' ? 'warn' : 'blue')}</div>
+          <b>${item.recommendation}</b>
+          <p>${item.evidence}</p>
+        </div>
+        <button class="mini-btn" data-action="quick-action" data-label="${item.buttons[0]}">${item.buttons[0]}</button>
       </div>
     `).join('')}</div>`;
   }
 
-  function heatmap(matrix) {
-    const slots = ['00-06', '06-09', '09-12', '12-15', '15-18', '18-22'];
-    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  function riskList() {
+    return `<div class="cockpit-side-list">${data.risks.map(item => `
+      <div class="cockpit-risk-item ${item.tone}">
+        <div><b>${item.title}</b><p>${item.text}</p></div>
+        ${tag(item.status, item.tone)}
+      </div>
+    `).join('')}</div>`;
+  }
+
+  function combinationRows() {
     return `
-      <div class="heatmap">
-        <div></div>${days.map(day => `<b>${day}</b>`).join('')}
-        ${matrix.map((row, rowIndex) => `
-          <span>${slots[rowIndex]}</span>
-          ${row.map(value => `<i style="--heat:${value / 100}"></i>`).join('')}
+      <div class="combo-watch-list">
+        ${data.combinations.map(item => `
+          <div class="combo-watch-item ${item.tone}">
+            <div class="combo-watch-main">
+              <b>${item.name}</b>
+              <span>${item.account}</span>
+              <em>${item.material}</em>
+            </div>
+            <div class="combo-watch-metrics">
+              <div><label>今日消耗</label><strong>${item.spend}</strong></div>
+              <div><label>客资</label><strong>${item.leads}条</strong></div>
+              <div><label>客资成本</label><strong>${item.cost}</strong></div>
+            </div>
+            <div class="combo-watch-state">
+              ${tag(item.publishStatus, statusTone(item.publishStatus))}
+              ${tag(item.ai, item.tone)}
+            </div>
+            <div class="combo-watch-actions">
+              <button class="mini-btn" data-action="quick-action" data-label="${item.action}">${item.action}</button>
+              <button class="mini-btn" data-action="quick-action" data-label="查看诊断">查看诊断</button>
+            </div>
+          </div>
         `).join('')}
       </div>
     `;
   }
 
-  function suggestionList(items) {
-    return `<div class="dash-list">${items.map((item, index) => `
-      <div class="dash-action">
-        <span class="index-badge ${item.tone}">${index + 1}</span>
-        <div><b>${item.title}</b><p>${item.text}</p></div>
-        <button class="mini-btn" ${item.status === '去处理' ? 'data-page-jump="assets"' : 'data-action="confirm-suggestion"'}>${item.status}</button>
-      </div>
-    `).join('')}</div>`;
-  }
-
-  function riskList(items) {
-    return `<div class="dash-list">${items.map(item => `
-      <div class="risk-item ${item.tone}">
-        <div><b>${item.title}</b><p>${item.text}</p></div>
-        ${UI.tag(item.status, item.tone === 'bad' ? 'bad' : 'warn')}
-      </div>
-    `).join('')}</div>`;
-  }
-
-  function rankTable(headers, rows, type) {
+  function miniRecommendation(title, items, type) {
     return `
-      <table class="rank-table">
-        <thead><tr>${headers.map(head => `<th>${head}</th>`).join('')}</tr></thead>
-        <tbody>
-          ${rows.map(row => type === 'material' ? `
-            <tr>
-              <td>${row.trophy || row.rank}</td><td>${row.name}</td><td>${row.exposure}</td><td>${row.ctr}</td><td>${row.leads}</td><td>${row.cpa}</td><td>${UI.tag(row.verdict, row.tone)}</td>
-            </tr>
-          ` : `
-            <tr>
-              <td>${row.trophy || row.rank}</td><td>${row.name}</td><td>${row.cost}</td><td>${row.leads}</td><td>${row.cpa}</td><td>${UI.tag(row.advice, row.tone)}</td><td><button class="mini-btn" ${row.action === '授权' ? 'data-page-jump="assets"' : `data-action="show-account" data-name="${row.name}"`}>${row.action}</button></td>
-            </tr>
+      <div class="card card-pad cockpit-aux-card">
+        <div class="dash-head"><h3>${title}</h3><span>${type}</span></div>
+        <div class="recommend-list">
+          ${items.map(item => `
+            <div class="recommend-item ${item.tone}">
+              <div>
+                <b>${item.name}</b>
+                <p>${item.bestFor || item.bestCombo}</p>
+                <span>${item.ai}</span>
+              </div>
+              ${tag(item.status || item.recommendation, item.tone)}
+            </div>
           `).join('')}
-        </tbody>
-      </table>
-    `;
-  }
-
-  function toneTag(text, tone = 'blue') {
-    const map = { good: 'good', warn: 'warn', bad: 'bad', blue: 'blue' };
-    return UI.tag(text, map[tone] || 'blue');
-  }
-
-  function businessId(name) {
-    return `business-${name}`;
-  }
-
-  function moneyNumber(value) {
-    return Number(String(value || '').replace(/[^\d.]/g, '')) || 0;
-  }
-
-  function businessStats(product, index = 0) {
-    const plans = data.plans.filter(plan => plan.business === product.name);
-    const materials = data.materials.filter(material => material.product.includes(product.name));
-    const spend = plans.reduce((sum, plan) => sum + moneyNumber(plan.cost), 0);
-    const leads = plans.reduce((sum, plan) => sum + moneyNumber(plan.leads), 0);
-    const cpa = leads ? Math.round(spend / leads) : moneyNumber(product.cpa);
-    const active = plans.filter(plan => plan.status === '投放中' || plan.status === '观察中').length;
-    const reusable = materials.filter(material => material.deliveryStatus === '可复用' || material.adAudit === '广告审核通过').length;
-    const tone = product.status === '测试中' ? 'warn' : product.status === '储备' ? 'gray' : active ? 'good' : 'blue';
-    const trendPool = [
-      [18, 22, 20, 26, 24, 31, 42, 39, 52, 58],
-      [14, 18, 17, 24, 21, 28, 40, 43, 36, 50],
-      [12, 14, 16, 20, 24, 22, 28, 34, 30, 38],
-      [8, 12, 14, 13, 12, 18, 25, 22, 31, 40],
-      [10, 16, 20, 18, 15, 22, 29, 35, 31, 42],
-      [16, 18, 21, 20, 19, 30, 28, 41, 37, 46]
-    ];
-    return {
-      id: businessId(product.name),
-      spend,
-      spendText: spend ? `¥${spend.toLocaleString()}` : '¥0',
-      leads,
-      leadsText: `${leads}条`,
-      cpa,
-      cpaText: cpa ? `¥${cpa}` : '-',
-      active,
-      materialCount: materials.length,
-      reusable,
-      tone,
-      trend: trendPool[index % trendPool.length]
-    };
-  }
-
-  function cockpitCurrentItems(cockpit) {
-    const typeMap = { '按计划': '计划', '按账号': '账号', '按素材': '素材' };
-    if (state.dashFilter === '按业务') {
-      const products = state.dashBusiness === '全部业务' ? data.products : data.products.filter(product => product.name === state.dashBusiness);
-      return products.map((product, index) => {
-        const stats = businessStats(product, index);
-        return {
-          id: stats.id,
-          name: `${product.name}业务`,
-          type: '业务',
-          status: product.status === '储备' ? '待素材' : product.status,
-          spend: stats.spendText,
-          leads: stats.leadsText,
-          cpa: stats.cpaText,
-          materials: `${stats.materialCount}条`,
-          activePlans: `${stats.active}个`,
-          trend: stats.trend,
-          ai: product.advice,
-          action: '查看',
-          tone: stats.tone
-        };
-      });
-    }
-    const type = typeMap[state.dashFilter];
-    return type ? cockpit.current.filter(item => item.type === type) : cockpit.current;
-  }
-
-  function cockpitChart(chart, selectedName, options = {}) {
-    const width = 980;
-    const height = 330;
-    const pad = { left: 54, right: 62, top: 32, bottom: 72 };
-    const filterProfiles = {
-      '全部投放': { phase: 0, spend: 1, leads: 1, cpa: 0 },
-      '按计划': { phase: 7, spend: 1.08, leads: .96, cpa: 14 },
-      '按账号': { phase: 15, spend: .82, leads: .78, cpa: 4 },
-      '按素材': { phase: 24, spend: .68, leads: 1.12, cpa: -18 },
-      '按业务': { phase: 31, spend: .94, leads: 1.22, cpa: -10 }
-    };
-    const profile = filterProfiles[options.filter] || filterProfiles['全部投放'];
-    const sourceN = chart.hours || 157;
-    const n = options.grain === '按天' ? 7 : sourceN;
-    const spendRaw = Array.from({ length: n }, (_, index) => {
-      const t = index / (n - 1);
-      const k = index + profile.phase;
-      const wave = Math.sin(k * 0.24) * 92 + Math.sin(k * 0.79) * 38 + Math.sin(k * 1.57) * 18;
-      const peak = t > .22 && t < .43 ? 178 : t > .72 ? 82 : 0;
-      const dip = t > .50 && t < .60 ? -116 : 0;
-      return Math.max(180, (500 + wave + peak + dip + ((k * 29) % 76) - 36) * profile.spend);
-    });
-    const leadsRaw = Array.from({ length: n }, (_, index) => {
-      const t = index / (n - 1);
-      const k = index + profile.phase;
-      const base = 8 + Math.sin(k * 0.15) * 3.1 + Math.sin(k * 0.49) * 1.2;
-      const lift = t > .32 ? 2.1 : 0;
-      const endLift = t > .78 ? 3.2 : 0;
-      return Math.max(3, (base + lift + endLift) * profile.leads);
-    });
-    const cpaRaw = Array.from({ length: n }, (_, index) => {
-      const t = index / (n - 1);
-      const k = index + profile.phase;
-      const wave = Math.sin((k - 16) * 0.10) * 74 + Math.sin(k * 0.47) * 17 + Math.sin(k * 1.13) * 9;
-      const drift = t > .56 ? -66 : t > .30 ? 52 : 0;
-      return Math.max(72, 205 + wave + drift + profile.cpa);
-    });
-    const x = index => pad.left + index * ((width - pad.left - pad.right) / (n - 1));
-    const yLeft = value => pad.top + (1200 - value) / 1200 * (height - pad.top - pad.bottom);
-    const yRight = value => pad.top + (480 - value) / 480 * (height - pad.top - pad.bottom);
-    const spend = spendRaw;
-    const leads = leadsRaw.map(v => v * 42);
-    const cpa = cpaRaw;
-    const makeLine = (values, mapper) => values.map((value, index) => `${x(index).toFixed(1)},${mapper(value).toFixed(1)}`).join(' ');
-    const eventColor = tone => tone === 'good' ? '#18D39E' : tone === 'bad' ? '#EF4444' : tone === 'warn' ? '#F59E0B' : '#38BDF8';
-    const ticks = [0, 200, 400, 600, 800, 1000, 1200];
-    const rightTicks = [0, 80, 160, 240, 320, 400, 480];
-    const dateLabels = ['05-27', '05-28', '05-29', '05-30', '05-31', '06-01', '06-02'];
-    const tickCount = options.grain === '按天' ? 7 : 14;
-    const xTickIndexes = Array.from({ length: tickCount }, (_, tickIndex) => Math.round(tickIndex * (n - 1) / (tickCount - 1)));
-    const xTickLabels = xTickIndexes.map((_, tickIndex) => {
-      if (options.grain === '按天') return dateLabels[tickIndex] || '';
-      const hour = (tickIndex * 12) % 24;
-      const day = dateLabels[Math.min(dateLabels.length - 1, Math.floor(tickIndex / 2))];
-      return hour === 0 ? `00:00\n${day}` : `${String(hour).padStart(2, '0')}:00`;
-    });
-    const minorGridIndexes = Array.from({ length: options.grain === '按天' ? 7 : 27 }, (_, tickIndex) => Math.round(tickIndex * (n - 1) / ((options.grain === '按天' ? 7 : 27) - 1)));
-    const miniPoints = spendRaw.map((value, index) => `${x(index).toFixed(1)},${(height - 34 - (value - 240) / 780 * 20).toFixed(1)}`).join(' ');
-    const showMulti = options.metric !== 'cpa';
-    const eventIndex = event => Math.round(event.index / (sourceN - 1) * (n - 1));
-    return `
-      <svg class="cockpit-chart" viewBox="0 0 ${width} ${height}" aria-label="${selectedName}投放表现">
-        <defs>
-          <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="#2F7BFF" stop-opacity=".18"></stop>
-            <stop offset="100%" stop-color="#2F7BFF" stop-opacity="0"></stop>
-          </linearGradient>
-          <linearGradient id="miniFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="#64748B" stop-opacity=".26"></stop>
-            <stop offset="100%" stop-color="#64748B" stop-opacity=".08"></stop>
-          </linearGradient>
-        </defs>
-        ${minorGridIndexes.map(index => `<line x1="${x(index).toFixed(1)}" y1="${pad.top}" x2="${x(index).toFixed(1)}" y2="${height - pad.bottom}" stroke="rgba(148,163,184,.045)"></line>`).join('')}
-        ${ticks.map(value => `<line x1="${pad.left}" y1="${yLeft(value).toFixed(1)}" x2="${width - pad.right}" y2="${yLeft(value).toFixed(1)}" stroke="rgba(148,163,184,.11)"></line><text x="${pad.left - 12}" y="${yLeft(value).toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="#64748B" font-size="11">${value}</text>`).join('')}
-        ${rightTicks.map(value => `<text x="${width - pad.right + 14}" y="${yRight(value).toFixed(1)}" dominant-baseline="middle" fill="#64748B" font-size="11">${value}</text>`).join('')}
-        <text x="${pad.left - 12}" y="${pad.top - 10}" text-anchor="start" fill="#94A3B8" font-size="12" font-weight="700">消耗 / 线索</text>
-        <text x="${width - 8}" y="${pad.top - 10}" text-anchor="end" fill="#94A3B8" font-size="12" font-weight="700">CPA(元)</text>
-        <line x1="${pad.left}" x2="${width - pad.right}" y1="${yRight(chart.target).toFixed(1)}" y2="${yRight(chart.target).toFixed(1)}" stroke="rgba(226,232,240,.62)" stroke-width="2" stroke-dasharray="5 6"></line>
-        ${showMulti ? `<polyline points="${makeLine(spend, yLeft)} ${width - pad.right},${height - pad.bottom} ${pad.left},${height - pad.bottom}" fill="url(#chartFill)" opacity=".55"></polyline>
-        <polyline points="${makeLine(spend, yLeft)}" fill="none" stroke="#2F7BFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
-        <polyline points="${makeLine(leads, yLeft)}" fill="none" stroke="#18D39E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>` : ''}
-        <polyline points="${makeLine(cpa, yRight)}" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
-        ${chart.events.map(event => {
-          const index = eventIndex(event);
-          const cx = x(index);
-          const cy = event.tone === 'warn' ? yLeft(spend[index]) : event.tone === 'good' ? yRight(cpa[index]) : yLeft(leads[index]);
-          const color = eventColor(event.tone);
-          const boxY = event.index > 37 ? 44 : 28;
-          const boxX = Math.max(pad.left + 6, Math.min(width - pad.right - 104, cx - 52));
-          return `
-            <g>
-              <line x1="${cx}" x2="${cx}" y1="${pad.top}" y2="${height - pad.bottom}" stroke="${color}" stroke-dasharray="4 5" opacity=".58"></line>
-              <circle cx="${cx}" cy="${cy}" r="5" fill="${color}"></circle>
-              <rect x="${boxX}" y="${boxY}" width="104" height="52" rx="5" fill="rgba(2,6,23,.76)" stroke="${color}" opacity=".96"></rect>
-              <text x="${boxX + 12}" y="${boxY + 18}" fill="${color}" font-size="12" font-weight="900">${event.label}</text>
-              <text x="${boxX + 12}" y="${boxY + 34}" fill="#CBD5E1" font-size="11">${event.time}</text>
-              <text x="${boxX + 12}" y="${boxY + 48}" fill="#94A3B8" font-size="10">${event.detail}</text>
-            </g>
-          `;
-        }).join('')}
-        ${xTickIndexes.map((index, tickIndex) => {
-          const lines = xTickLabels[tickIndex].split('\n');
-          return `<text x="${x(index)}" y="${height - 53}" text-anchor="middle" fill="#64748B" font-size="11">${lines.map((line, lineIndex) => `<tspan x="${x(index)}" dy="${lineIndex ? 14 : 0}">${line}</tspan>`).join('')}</text>`;
-        }).join('')}
-        <polyline points="${miniPoints} ${width - pad.right},${height - 18} ${pad.left},${height - 18}" fill="url(#miniFill)"></polyline>
-        <polyline points="${miniPoints}" fill="none" stroke="rgba(148,163,184,.28)" stroke-width="1.5"></polyline>
-        <rect x="${x(Math.round(n * .78))}" y="${height - 42}" width="${x(n - 1) - x(Math.round(n * .78))}" height="24" fill="rgba(148,163,184,.12)" stroke="rgba(226,232,240,.72)" rx="2"></rect>
-        <rect x="${x(Math.round(n * .78)) - 2}" y="${height - 42}" width="4" height="24" fill="#CBD5E1" rx="1"></rect>
-        <rect x="${x(n - 1) - 2}" y="${height - 42}" width="4" height="24" fill="#CBD5E1" rx="1"></rect>
-      </svg>
-    `;
-  }
-
-  function currentRows(items) {
-    return items.map(item => `
-      <tr class="${item.id === state.dashSelected ? 'selected' : ''}" data-action="select-cockpit-row" data-id="${item.id}">
-        <td><b>${item.name}</b><span>${item.type}</span></td>
-        <td>${toneTag(item.status, item.tone)}</td>
-        <td>${item.spend}</td>
-        <td>${item.leads}</td>
-        <td>${item.cpa}</td>
-        ${state.dashFilter === '按业务' ? `<td>${item.materials || '-'}</td><td>${item.activePlans || '-'}</td>` : ''}
-        <td>${spark(item.trend, item.tone === 'bad' ? '#EF4444' : item.tone === 'warn' ? '#F59E0B' : item.tone === 'blue' ? '#38BDF8' : '#18D39E')}</td>
-        <td>${toneTag(item.ai, item.tone)}</td>
-        <td><button class="mini-btn" data-action="cockpit-row-action" data-name="${item.name}">${item.action}</button></td>
-      </tr>
-    `).join('');
-  }
-
-  function historyRows(items) {
-    return items.map(item => `
-      <tr data-action="select-history-row" data-name="${item.name}">
-        <td><b>${item.name}</b><span>${item.period}</span></td>
-        <td>${item.spend}</td>
-        <td>${item.leads}</td>
-        <td>${item.cpa}</td>
-        <td>${toneTag(item.verdict, item.tone)}</td>
-        <td>${item.reusable}</td>
-      </tr>
-    `).join('');
-  }
-
-  function focusRows(items) {
-    return items.map(item => `
-      <tr data-action="select-focus-row" data-name="${item.object}">
-        <td><b>${item.name}</b><span>${item.object}</span></td>
-        <td>${item.type}</td>
-        <td>${toneTag(item.status, item.tone)}</td>
-        <td>${item.ai}</td>
-      </tr>
-    `).join('');
-  }
-
-  function cockpitList(cockpit, currentItems = cockpit.current) {
-    if (state.dashTab === 'history') {
-      return `
-        <table class="cockpit-table">
-          <thead><tr><th>投放名称</th><th>总消耗</th><th>总线索</th><th>平均CPA</th><th>最终判断</th><th>是否可复用</th></tr></thead>
-          <tbody>${historyRows(cockpit.history)}</tbody>
-        </table>
-      `;
-    }
-    if (state.dashTab === 'focus') {
-      return `
-        <table class="cockpit-table">
-          <thead><tr><th>重点对象</th><th>类型</th><th>状态</th><th>AI当前盯防动作</th></tr></thead>
-          <tbody>${focusRows(cockpit.focus)}</tbody>
-        </table>
-      `;
-    }
-    return `
-      <table class="cockpit-table">
-        <thead><tr><th>名称</th><th>状态</th><th>今日消耗</th><th>今日线索</th><th>CPA</th>${state.dashFilter === '按业务' ? '<th>素材数</th><th>在投计划</th>' : ''}<th>趋势</th><th>AI判断</th><th>操作</th></tr></thead>
-        <tbody>${currentRows(currentItems)}</tbody>
-      </table>
-    `;
-  }
-
-  function sideAdvice(items) {
-    return `<div class="cockpit-side-list">${items.map((item, index) => `
-      <div class="cockpit-side-item ${item.tone}">
-        <span class="index-badge ${item.tone}">${index + 1}</span>
-        <div><b>${item.title}</b><p>${item.text}</p></div>
-        <button class="mini-btn" data-action="confirm-suggestion">${item.action}</button>
-      </div>
-    `).join('')}</div>`;
-  }
-
-  function sideRisks(items) {
-    return `<div class="cockpit-side-list">${items.map(item => `
-      <div class="cockpit-risk-item ${item.tone}">
-        <div><b>${item.title}</b><p>${item.text}</p></div>
-        ${toneTag(item.status, item.tone)}
-      </div>
-    `).join('')}</div>`;
-  }
-
-  function businessProductById(id) {
-    if (!id || !id.startsWith('business-')) return null;
-    return data.products.find(product => businessId(product.name) === id);
-  }
-
-  function businessAdvice(product, stats) {
-    if (!product) return null;
-    const material = data.materials.find(item => item.product.includes(product.name));
-    const reusable = material?.deliveryStatus === '可复用' || material?.adAudit === '广告审核通过';
-    return [
-      { title: `${product.name}当前CPA ${stats.cpaText}`, text: stats.cpa && stats.cpa < 200 ? '低于目标，可作为优先观察业务' : '成本偏高，建议先控预算', tone: stats.cpa && stats.cpa < 200 ? 'good' : 'warn', action: stats.cpa && stats.cpa < 200 ? '扩量' : '控本' },
-      { title: `${stats.materialCount} 条素材已关联`, text: reusable ? `可复用「${material.name}」继续投流` : '素材不足，建议补充新视频', tone: reusable ? 'blue' : 'warn', action: reusable ? '复用' : '补素材' },
-      { title: `${stats.active} 个计划正在关联`, text: stats.active ? '数据已回流驾驶舱，可继续观察趋势' : '暂无在投计划，可生成投放计划', tone: stats.active ? 'good' : 'warn', action: stats.active ? '观察' : '创建' },
-      { title: `推荐账号：${product.account}`, text: 'AI将优先用该账号承接业务线索', tone: 'blue', action: '查看' }
-    ];
-  }
-
-  function businessSources(product) {
-    if (!product) return null;
-    const main = product.account.includes('老房') ? '星辰老房翻新号' : product.account.includes('设计师') ? '设计师阿林' : '星辰装饰官方号';
-    const rest = data.dashboard.sources.filter(item => item.label !== main).slice(0, 3);
-    const colors = ['#22C55E', '#38BDF8', '#8B5CF6', '#F97316'];
-    return [
-      { label: main, value: 58, leads: '主来源', color: colors[0] },
-      ...rest.map((item, index) => ({ label: item.label, value: [24, 12, 6][index], leads: item.leads, color: colors[index + 1] }))
-    ];
-  }
-
-  function historySummary(items) {
-    return `<div class="history-summary">${items.map(item => `
-      <div class="${item.tone}">
-        <b>${item.title}</b>
-        <span>${item.count}</span>
-        <em>${item.cpa}</em>
-        <small>${item.roi}</small>
-      </div>
-    `).join('')}</div>`;
-  }
-
-  function compactDonut(items, center, subtitle) {
-    let start = 0;
-    const stops = items.map(item => {
-      const end = start + item.value;
-      const stop = `${item.color} ${start}% ${end}%`;
-      start = end;
-      return stop;
-    }).join(', ');
-    return `
-      <div class="compact-donut-wrap">
-        <div class="compact-donut" style="background: conic-gradient(${stops})"><span>${center}<small>${subtitle}</small></span></div>
-        <div class="compact-legend">${items.map(item => `
-          <div><i style="background:${item.color}"></i><b>${item.label}</b><span>${item.value}%</span><em>${item.leads || item.count}</em></div>
-        `).join('')}</div>
+        </div>
       </div>
     `;
-  }
-
-  function warningDistribution(items) {
-    return `<div class="warning-bars">${items.map(item => `
-      <div class="warning-bar-row">
-        <div><b>${item.label}</b><span>${item.count}</span></div>
-        <div class="warning-track"><i style="width:${item.value}%;background:${item.color}"></i></div>
-        ${toneTag(item.value >= 40 ? '高' : item.value >= 25 ? '中' : '低', item.tone)}
-      </div>
-    `).join('')}</div>`;
   }
 
   function renderHome() {
-    const d = data.dashboard;
-    const cockpit = d.cockpit;
-    const currentItems = cockpitCurrentItems(cockpit);
-    const selected = state.dashSelected === 'all' ? { id: 'all', name: state.dashFilter === '按业务' ? '全部业务' : '全部投放' } : currentItems.find(item => item.id === state.dashSelected) || cockpit.current.find(item => item.id === state.dashSelected) || currentItems[0] || cockpit.current[0];
-    const chartTitle = selected.id === 'all' ? (state.dashFilter === '按业务' ? '全部业务 · 投放表现' : '投放表现主图') : `${selected.name} · 投放表现`;
-    const selectedBusiness = businessProductById(selected.id);
-    const selectedBusinessStats = selectedBusiness ? businessStats(selectedBusiness, data.products.indexOf(selectedBusiness)) : null;
-    const advice = (selectedBusiness && businessAdvice(selectedBusiness, selectedBusinessStats)) || cockpit.adviceByItem[selected.id] || cockpit.adviceByItem.all || cockpit.adviceByItem['old-house'];
-    const sourceItems = businessSources(selectedBusiness) || d.sources;
-    const sourceCenter = selectedBusinessStats ? String(selectedBusinessStats.leads) : '16';
-    const businessChips = ['全部业务', ...data.products.map(product => product.name)];
     return `
-      <div class="dashboard cockpit">
+      <div class="dashboard cockpit operator-cockpit">
         <div class="dashboard-toolbar">
-          <div></div>
-          <div class="date-controls"><span>数据时间：2025-06-02</span>${UI.tag(d.date, 'gray')}</div>
+          <div class="desk-pulse">AI巡检运行中 · ${data.operator.lastInspection} 已更新 · 下一次 ${data.operator.nextInspection}</div>
+          <div class="date-controls"><span>数据时间：${data.cockpit.date}</span>${tag(data.operator.availableDays, 'blue')}</div>
         </div>
-
-        <section class="dash-metrics">${d.metrics.map(metricCard).join('')}</section>
-
+        <section class="dash-metrics">${data.cockpit.metrics.map(metricCard).join('')}</section>
         <section class="cockpit-business-filter">
           <span>业务筛选</span>
-          ${businessChips.map(name => `<button class="${state.dashBusiness === name ? 'active' : ''}" data-action="dash-business" data-business="${name}">${name}</button>`).join('')}
+          ${data.cockpit.filters.map((name, index) => `<button class="${index === 0 ? 'active' : ''}" data-action="quick-action" data-label="${name}">${name}</button>`).join('')}
         </section>
-
         <section class="cockpit-grid">
-          <div class="card card-pad cockpit-main-card">
-            <div class="cockpit-chart-head">
-              <div>
-                <h3 id="cockpitChartTitle">${chartTitle}</h3>
-                <div class="legend">${state.dashMetric === 'multi' ? '<i class="blue"></i>消耗<i class="green"></i>线索<i class="purple"></i>CPA<i class="line"></i>目标CPA' : '<i class="purple"></i>CPA<i class="line"></i>目标CPA'}</div>
-              </div>
-              <div class="cockpit-controls">
-                <div class="segmented">${cockpit.filters.map(item => `<button class="${state.dashFilter === item ? 'active' : ''}" data-action="dash-filter" data-filter="${item}">${item}</button>`).join('')}</div>
-                <div class="segmented compact"><button class="${state.dashMetric === 'multi' ? 'active' : ''}" data-action="dash-metric-mode">${state.dashMetric === 'multi' ? '多指标对比' : '只看CPA'}</button></div>
-                <div class="segmented compact">${cockpit.grains.map(item => `<button class="${state.dashGrain === item ? 'active' : ''}" data-action="dash-grain" data-grain="${item}">${item}</button>`).join('')}</div>
-              </div>
-            </div>
-            ${cockpitChart(cockpit.chart, selected.name, { filter: state.dashFilter, grain: state.dashGrain, metric: state.dashMetric })}
-          </div>
-
           <aside class="cockpit-right">
-            <div class="card card-pad dash-card">
-              <div class="dash-head"><h3>AI今日建议</h3>${UI.tag('4 条建议', 'good')}</div>
-              ${sideAdvice(advice)}
+            <div class="card card-pad dash-card scroll-card">
+              <div class="dash-head"><h3>AI待处理建议</h3>${tag(`${data.operator.pendingActions} 条未关闭`, 'good')}</div>
+              ${aiActionList()}
             </div>
-            <div class="card card-pad dash-card risk-card">
-              <div class="dash-head"><h3>风险预警</h3>${UI.tag('4 项风险', 'bad')}</div>
-              ${sideRisks(cockpit.risks)}
+            <div class="card card-pad dash-card risk-card scroll-card">
+              <div class="dash-head"><h3>风险预警</h3>${tag(`${data.operator.risks} 项风险`, 'bad')}</div>
+              ${riskList()}
             </div>
             <div class="card card-pad dash-card">
               <div class="dash-head"><h3>历史投放摘要</h3><span>近30天</span></div>
-              ${historySummary(cockpit.historySummary)}
+              <div class="history-summary">
+                <div class="good"><b>历史优质</b><span>12个组合</span><em>平均客资成本 ¥152</em><small>可复用</small></div>
+                <div class="warn"><b>待观察</b><span>8个组合</span><em>成本波动</em><small>继续测试</small></div>
+                <div class="bad"><b>已淘汰</b><span>6个组合</span><em>空耗/低质</em><small>不再复投</small></div>
+              </div>
             </div>
           </aside>
-
+          <div class="card card-pad cockpit-main-card">
+            <div class="cockpit-chart-head">
+              <div>
+                <h3>投放表现主图</h3>
+                <div class="legend"><i class="blue"></i>消耗<i class="green"></i>客资<i class="purple"></i>客资成本<i class="line"></i>参考成本</div>
+              </div>
+              <div class="cockpit-controls">
+                <div class="segmented">${['汇总', '按计划', '按账号', '按素材', '按获客方向'].map(item => `<button class="${state.dashFilter === item ? 'active' : ''}" data-action="dash-filter" data-filter="${item}">${item}</button>`).join('')}</div>
+                <button class="btn small" data-action="quick-action" data-label="多指标对比">多指标对比</button>
+                <div class="segmented compact">${['按小时', '按天'].map(item => `<button class="${state.dashGrain === item ? 'active' : ''}" data-action="dash-grain" data-grain="${item}">${item}</button>`).join('')}</div>
+              </div>
+            </div>
+            ${scopeSelector(currentScope())}
+            ${cockpitChart()}
+          </div>
           <div class="cockpit-bottom">
             <div class="card card-pad cockpit-list-card">
-              <div class="cockpit-tabs">
-                <button class="${state.dashTab === 'current' ? 'active' : ''}" data-action="dash-tab" data-tab="current">当前投放</button>
-                <button class="${state.dashTab === 'history' ? 'active' : ''}" data-action="dash-tab" data-tab="history">历史投放</button>
-                <button class="${state.dashTab === 'focus' ? 'active' : ''}" data-action="dash-tab" data-tab="focus">重点关注</button>
-              </div>
-              <div class="table-title">${state.dashTab === 'current' ? `${state.dashFilter}标的（${currentItems.length}）` : state.dashTab === 'history' ? '历史投放记录' : '重点关注对象'}</div>
-              ${cockpitList(cockpit, currentItems)}
+              <div class="table-title">正在监控的投放组合（${data.combinations.length}）</div>
+              ${combinationRows()}
             </div>
             <div class="cockpit-aux">
-              <div class="card card-pad cockpit-aux-card">
-                <div class="dash-head"><h3>线索来源分布</h3><span>按账号</span></div>
-                ${compactDonut(sourceItems, sourceCenter, '总线索')}
-              </div>
-              <div class="card card-pad cockpit-aux-card">
-                <div class="dash-head"><h3>预警分布</h3><span>按类型</span></div>
-                ${warningDistribution(cockpit.warningDistribution)}
-              </div>
+              ${miniRecommendation('推荐账号', data.accountRecommendations.slice(0, 4), '按客资类型')}
+              ${miniRecommendation('推荐素材/视频', data.materialRecommendations.slice(0, 4), '按复投表现')}
             </div>
           </div>
         </section>
@@ -613,386 +699,911 @@
     `;
   }
 
-  function renderAssets() {
-    const c = data.company;
-    const a = data.adAccount;
-    return `
-      <div class="grid-2">
-        <div class="card card-pad">
-          <div class="list-row"><h3 class="font-semibold">装修公司主体</h3>${UI.tag('已认证', 'good')}</div>
-          <div class="grid-3 section">
-            ${UI.info('公司名称', c.name)}
-            ${UI.info('所在城市', c.city)}
-            ${UI.info('服务区域', c.area)}
-            ${UI.info('服务类型', c.services)}
-            ${UI.info('客单价区间', c.price)}
-            ${UI.info('主推业务', c.main)}
-            ${UI.info('资料完整度', c.complete)}
-          </div>
-        </div>
-        <div class="card card-pad">
-          <div class="list-row"><h3 class="font-semibold">巨量引擎账户</h3>${UI.tag(a.auth, 'good')}</div>
-          <div class="list section">
-            ${UI.info('账户名称', a.name)}
-            ${UI.info('广告主ID', a.id)}
-            ${UI.info('账户余额', a.balance)}
-            ${UI.info('日预算建议', a.dailyBudget)}
-            ${UI.info('数据同步', `<span id="syncTime">${a.sync}</span>`)}
-          </div>
-          <div class="actions section">
-            <button class="btn secondary" data-action="auth-detail">查看授权详情</button>
-            <button class="btn secondary" data-action="balance-alert">设置余额提醒</button>
-            <button class="btn" data-action="sync-account">同步账户数据</button>
-          </div>
-        </div>
-      </div>
+  function renderAcquisition() {
+    if (state.planView === 'detail') return renderPlanDetail();
+    if (state.planView === 'create') return renderPlanCreate();
+    return renderPlanList();
+  }
 
-      <div class="card card-pad section">
-        <h3 class="font-semibold">关联抖音号</h3>
-        <div class="grid-2 section">${data.accounts.map(account => UI.accountCard(account)).join('')}</div>
+  function planSteps(activeIndex, maxStep = activeIndex) {
+    const steps = ['AI解析计划', '组合方案', '发布审核并投流', '监控调控'];
+    const descriptions = ['输入任务，AI智能解析', 'AI生成投放组合方案', '提交审核并开启投放', '实时监控，智能优化'];
+    return `<div class="plan-stepper">${steps.map((step, index) => {
+      const isActive = index === activeIndex;
+      const isDone = index <= maxStep && !isActive;
+      const isLocked = index > maxStep;
+      return `
+        <button class="plan-step ${isDone ? 'done' : isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}" data-action="plan-step" data-step="${index}" ${isLocked ? 'disabled' : ''}>
+          <span>${index + 1}</span><b>${step}</b><small>${descriptions[index]}</small>${isDone ? '<span class="step-check">✓</span>' : ''}
+        </button>
+      `;
+    }).join('')}</div>`;
+  }
+
+  function planCard(plan) {
+    return `
+      <article class="plan-work-card ${plan.tone}" data-action="plan-detail" data-plan-id="${plan.id}">
+        <div class="plan-work-head">
+          <div>
+            <b>${plan.name}</b>
+            <span>${plan.direction} · ${plan.city}/${plan.area}</span>
+          </div>
+          ${tag(plan.status, plan.tone)}
+        </div>
+        <div class="plan-work-kpis">
+          <div><label>总预算</label><strong>${plan.totalBudget}</strong></div>
+          <div><label>已消耗</label><strong>${plan.spent}</strong></div>
+          <div><label>客资</label><strong>${plan.leads}条</strong></div>
+          <div><label>客资成本</label><strong>${plan.cost}</strong></div>
+        </div>
+        <div class="plan-work-step">
+          <div><label>当前步骤</label><strong>${plan.step}</strong></div>
+          <div><label>下一步</label><strong>${plan.nextAction}</strong></div>
+        </div>
+        <div class="plan-work-foot">
+          ${spark(plan.trend, toneColor(plan.tone))}
+          <div>${plan.adviceCount ? tag(`${plan.adviceCount}条AI建议`, 'warn') : tag('暂无待处理建议', 'good')}${tag(plan.anomaly, plan.tone)}</div>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderPlanList() {
+    const filters = ['全部', '配置中', '待发布审核', '投放中', '监控中', '已结束', '异常'];
+    return `
+      <div class="plan-workspace">
+        <div class="page-hero plan-hero">
+          <p>投放计划负责创建、组合确认、发布审核、自动投流和计划级监控调控；实时操作建议与操盘纵览同池。</p>
+          <button class="btn" data-action="plan-create">创建投放计划</button>
+        </div>
+        <section class="plan-filter-bar">
+          ${filters.map((name, index) => `<button class="${index === 0 ? 'active' : ''}" data-action="quick-action" data-label="${name}">${name}</button>`).join('')}
+        </section>
+        <section class="plan-card-grid">
+          ${data.plans.map(planCard).join('')}
+        </section>
       </div>
     `;
   }
 
-  function renderBusiness() {
-    const filters = ['全部', '主推', '投放中', '测试中', '储备', '可用'];
-    const visibleProducts = data.products.filter(item => state.businessFilter === '全部' || item.status === state.businessFilter);
-    const businessData = data.products.map((product, index) => ({ product, stats: businessStats(product, index) }));
-    const cpas = businessData.map(item => item.stats.cpa).filter(Boolean);
-    const avgCpa = Math.round(cpas.reduce((sum, item) => sum + item, 0) / cpas.length);
-    const totalSpend = businessData.reduce((sum, item) => sum + item.stats.spend, 0);
-    const totalLeads = businessData.reduce((sum, item) => sum + item.stats.leads, 0);
-    const activeBusinesses = businessData.filter(item => item.stats.active).length;
-    const reusableMaterials = businessData.reduce((sum, item) => sum + item.stats.reusable, 0);
-    const businessMetric = (label, value, icon, tone = 'blue', sub = '') => `
-      <div class="business-metric ${tone}">
-        <span>${icon}</span>
-        <div><label>${label}</label><b>${value}</b>${sub ? `<em>${sub}</em>` : ''}</div>
-      </div>
-    `;
-    const toneOf = status => status === '测试中' ? 'warn' : status === '储备' ? 'gray' : 'good';
-    const trendOf = (index, status) => {
-      const base = [
-        [18, 22, 20, 26, 24, 31, 42, 39, 52, 58],
-        [14, 18, 17, 24, 21, 28, 40, 43, 36, 50],
-        [12, 14, 16, 20, 24, 22, 28, 34, 30, 38],
-        [8, 12, 14, 13, 12, 18, 25, 22, 31, 40],
-        [10, 16, 20, 18, 15, 22, 29, 35, 31, 42],
-        [16, 18, 21, 20, 19, 30, 28, 41, 37, 46]
-      ][index % 6];
-      return status === '测试中' ? base.map((v, i) => i > 5 ? v + 8 : v) : base;
-    };
-    const businessCard = (product, index) => {
-      const stats = businessStats(product, index);
-      const tone = stats.tone || toneOf(product.status);
+  function selectedPlan() {
+    return data.plans.find(plan => plan.id === state.selectedPlanId) || data.plans[0];
+  }
+
+  function planCombos(plan) {
+    const matched = data.combinations.filter(item => item.plan === plan.name);
+    if (matched.length) return matched;
+    return data.combinations.slice(0, 2).map(item => ({ ...item, plan: plan.name, name: item.name.replace(/^[^-]+/, plan.direction.slice(0, 4)) }));
+  }
+
+  function planLogs(plan) {
+    return [
+      { time: '10:30', title: 'AI生成计划判断', text: `${plan.direction} · ${plan.city}/${plan.area}，预算 ${plan.totalBudget}` },
+      { time: '10:34', title: 'AI匹配投放组合', text: `推荐 ${plan.accountCount || 2} 个账号，${plan.materialCount || 3} 条素材` },
+      { time: '10:42', title: '发布审核状态更新', text: plan.stepIndex >= 2 ? plan.nextAction : '等待确认组合后发布视频' },
+      { time: '11:30', title: '监控调控提醒', text: plan.stepIndex >= 3 ? plan.ai : '投放满1小时后开启计划级监控' }
+    ];
+  }
+
+  function stepFooter(nextLabel = '进入下一步') {
+    return `<div class="step-action-row"><button class="btn" data-action="plan-next-step">${nextLabel}</button><button class="mini-btn" data-action="quick-action" data-label="保存当前进度">保存当前进度</button></div>`;
+  }
+
+  function planDetailBody(plan, activeStep) {
+    if (activeStep === 0) {
       return `
-        <div class="business-card ${tone}">
-          <div class="business-card-head">
-            <h3>${product.name}</h3>
-            ${UI.tag(product.status, tone)}
-          </div>
-          <div class="business-card-body">
-            <div class="business-fields">
-              <div><span>今日消耗</span><b>${stats.spendText}</b></div>
-              <div><span>今日线索</span><b>${stats.leadsText}</b></div>
-              <div><span>当前CPA</span><b>${stats.cpaText}</b></div>
-              <div><span>推荐账号</span><b>${product.account}</b></div>
+        <div class="step-stage-note">
+          <b>本步目标：确认AI解析出的计划配置</b>
+          <p>已有计划不会一直显示“AI生成中”，只展示AI解析结果和缺失项。重新解析时才出现动态动画。</p>
+        </div>
+        <div class="task-input-box">
+          <p>帮我在${plan.city}${plan.area}投${plan.direction}，预算${plan.totalBudget}，周期${plan.period}。</p>
+          <div class="actions"><button class="mini-btn" data-action="quick-action" data-label="重新AI解析">重新AI解析</button><button class="mini-btn">按住说话</button><button class="mini-btn">导入文件</button></div>
+        </div>
+        <div class="param-chip-grid">
+          ${[plan.direction, `${plan.city} · ${plan.area}`, `总预算 ${plan.totalBudget}`, plan.period, plan.materialType, plan.pace, plan.anomaly].map((item, index) => `<button class="${index === 6 && plan.tone !== 'good' ? 'missing' : ''}">${item}</button>`).join('')}
+        </div>
+        ${stepFooter('匹配投放组合')}
+      `;
+    }
+    if (activeStep === 1) {
+      return `
+        <div class="step-stage-note">
+          <b>本步目标：确认AI生成的投放组合</b>
+          <p>AI推荐账号、素材和预算占比，运营可以勾选、替换账号/素材或新增组合。</p>
+        </div>
+        <div class="combo-stage-list">
+          ${planCombos(plan).map((item, index) => `
+            <div class="combo-stage-item ${item.tone}">
+              <label class="combo-check"><input type="checkbox" checked /><span></span><b>${item.name}</b></label>
+              <div><b>${item.account}</b><span>${item.material}</span></div>
+              ${tag(item.budgetShare || `${40 - index * 10}%`, 'blue')}
+              <button class="mini-btn" data-action="quick-action" data-label="调整组合">调整组合</button>
             </div>
-            ${businessSpark(stats.trend || trendOf(index, product.status), tone)}
-          </div>
-          <div class="business-link-row">
-            <span>${stats.active} 个计划</span>
-            <span>${stats.materialCount} 条素材</span>
-            <span>${stats.reusable} 条可复用</span>
-          </div>
-          <div class="business-ai">${product.advice}</div>
-          <div class="business-actions">
-            <button class="mini-btn" data-action="product-detail" data-name="${product.name}">查看详情</button>
-            <button class="mini-btn primary" data-action="plan-draft" data-product="${product.name}" data-account="${product.account}">生成投放计划</button>
+          `).join('')}
+        </div>
+        ${stepFooter('确认组合，进入发布审核')}
+      `;
+    }
+    if (activeStep === 2) {
+      return `
+        <div class="step-stage-note">
+          <b>本步目标：发布视频并等待审核，审核通过后自动投流</b>
+          <p>无需单独启动投流。审核未过的组合需要替换素材或修改内容后重新发布。</p>
+        </div>
+        <div class="combo-stage-list">
+          ${planCombos(plan).map(item => `
+            <div class="combo-stage-item ${item.tone}">
+              <div><b>${item.name}</b><span>${item.account} · ${item.material}</span></div>
+              ${tag(item.publishStatus, statusTone(item.publishStatus))}
+              <button class="mini-btn" data-action="quick-action" data-label="${item.action}">${item.action}</button>
+            </div>
+          `).join('')}
+        </div>
+        ${stepFooter('审核通过，进入监控调控')}
+      `;
+    }
+    if (activeStep >= 3) {
+      return `
+        <div class="step-stage-note">
+          <b>本步目标：投放满1小时后开启计划级监控调控</b>
+          <p>这里展示当前计划的趋势、组合表现和AI建议；AI建议与操盘纵览同池，只是按当前计划过滤。</p>
+        </div>
+        <div class="plan-monitor-grid">
+          <div class="plan-monitor-chart">${planPerformanceChart(plan)}</div>
+          <div class="combo-stage-list">
+            ${planCombos(plan).map(item => `
+              <div class="combo-stage-item ${item.tone}">
+                <div><b>${item.name}</b><span>${item.account} · ${item.material}</span></div>
+                <strong>${item.spend} / ${item.leads}条 / ${item.cost}</strong>
+                ${tag(item.ai, item.tone)}
+              </div>
+            `).join('')}
           </div>
         </div>
       `;
+    }
+  }
+
+  function planCreateBody() {
+    const draftPlan = {
+      id: 'draft-plan',
+      name: '新建老房翻新投放计划',
+      direction: '老房翻新',
+      city: '上海',
+      area: '浦东',
+      totalBudget: '¥12,000',
+      spent: '¥0',
+      leads: 0,
+      cost: '-',
+      period: '7天',
+      pace: 'AI均衡消耗',
+      materialType: '报价/前后对比素材',
+      materialCount: 3,
+      accountCount: 3,
+      status: '配置中',
+      step: 'AI解析计划',
+      stepIndex: state.createStep,
+      nextAction: '匹配投放组合',
+      adviceCount: 0,
+      anomaly: '特殊要求待补充',
+      ai: 'AI已解析出计划配置',
+      tone: 'blue',
+      trend: [0, 0, 0, 0, 0, 0, 0]
     };
-    return `
-      <div class="business-page">
-        <div class="business-hero">
-          <p>管理推广业务，AI市场经理基于业务自动选择账号、素材与投流方式</p>
-          <button class="btn business-add" data-action="add-business">＋ 新增推广业务</button>
+    if (state.createStage === 'parsing') {
+      return aiInlineLoader();
+    }
+    if (state.createStep === 1) {
+      const budgetTotal = comboBudgetTotal();
+      const budgetOver = budgetTotal > 100;
+      return `
+        <div class="step-stage-note">
+          <b>AI已生成组合方案</b>
+          <p>请选择要发布的投放组合，可删除不需要的组合，或新增账号与视频组合。</p>
         </div>
-
-        <div class="business-metrics">
-          ${businessMetric('今日消耗', `¥${totalSpend.toLocaleString()}`, '¥', 'cyan')}
-          ${businessMetric('今日线索', `${totalLeads}条`, '●', 'good')}
-          ${businessMetric('在投业务', activeBusinesses, '◔', 'blue')}
-          ${businessMetric('可复用素材', reusableMaterials, '✓', 'good')}
-          ${businessMetric('平均历史CPA', `¥${avgCpa}`, '¥', 'blue', '近30天')}
+        <div class="combo-stage-list combo-edit-list">
+          ${state.createPublish.map((combo, index) => `
+            <div class="combo-stage-item combo-edit-item good">
+              <label class="combo-check"><input type="checkbox" checked /><span></span><b>${combo.name}</b></label>
+              <div><b>${combo.account}</b><span>${combo.material}</span><small>${combo.reason || '运营手动新增组合'}</small></div>
+              <label class="budget-edit ${budgetOver ? 'over' : ''}"><span>预算占比</span><input type="number" min="0" max="100" step="1" value="${budgetValue(combo.budget)}" data-action="budget-input" data-index="${index}" /><em>%</em></label>
+              <button class="mini-btn danger-lite" data-action="delete-combo" data-index="${index}">删除</button>
+            </div>
+          `).join('')}
         </div>
-
-        <div class="business-toolbar">
-          <div class="business-tabs">${filters.map(item => `<button class="${state.businessFilter === item ? 'active' : ''}" data-action="business-filter" data-filter="${item}">${item}</button>`).join('')}</div>
-          <div class="business-tools">
-            <button class="tool-select" data-action="business-sort">默认排序⌄</button>
-            <button class="icon-toggle ${state.businessView === 'grid' ? 'active' : ''}" data-action="business-view" data-view="grid">▦</button>
-            <button class="icon-toggle ${state.businessView === 'list' ? 'active' : ''}" data-action="business-view" data-view="list">☰</button>
+        <div class="budget-summary ${budgetOver ? 'over' : ''}">
+          <b>预算占比合计 ${budgetTotal}%</b>
+          <span>${budgetOver ? '已超过100%，请下调后再进入发布审核' : `剩余可分配 ${100 - budgetTotal}%`}</span>
+        </div>
+        <div class="combo-add-panel">
+          <div>
+            <b>新增组合</b>
+            <span>选择一个抖音号和一个视频素材</span>
+          </div>
+          <select id="comboAccountSelect">
+            <option>星辰老房翻新号</option>
+            <option>浦东门店号</option>
+            <option>设计师阿林</option>
+          </select>
+          <select id="comboMaterialSelect">
+            <option>老房前后对比 v2.1</option>
+            <option>报价避坑口播 v1.3</option>
+            <option>老房设计师讲解 v1</option>
+          </select>
+          <button class="mini-btn" data-action="add-combo">新增组合</button>
+        </div>
+        <div class="step-action-row bottom-actions"><button class="mini-btn" data-action="create-prev-step">返回解析结果</button><button class="btn" data-action="create-next-step" ${budgetOver ? 'disabled' : ''}>确认组合，进入发布审核</button></div>
+      `;
+    }
+    if (state.createStep === 2) {
+      const allReviewed = state.createPublish.every(item => item.status === '审核通过' || item.status === '投流中');
+      const hasUnpublished = state.createPublish.some(item => item.status === '待发布');
+      return `
+        <div class="publish-stage">
+          <div class="publish-toolbar">
+            <div>
+              <b>发布审核并投流</b>
+              <span>${state.createPublish.filter(item => item.status === '投流中').length}/${state.createPublish.length} 已投流</span>
+            </div>
+            <div class="publish-toolbar-actions">
+              <button class="btn" data-action="publish-all" ${hasUnpublished ? '' : 'disabled'}>一键发布</button>
+              <button class="btn ${allReviewed ? '' : 'secondary'}" data-action="launch-all" ${allReviewed ? '' : 'disabled'}>一键投放</button>
+              <button class="mini-btn" data-action="create-prev-step">返回组合方案</button>
+            </div>
+          </div>
+          <div class="publish-list">
+            ${state.createPublish.map((item, index) => {
+              const tone = item.status === '投流中' || item.status === '审核通过' ? 'good' : item.status === '审核中' ? 'warn' : 'blue';
+              const actionButton = item.status === '待发布'
+                ? `<button class="mini-btn" data-action="publish-one" data-index="${index}">发布视频</button>`
+                : item.status === '审核中'
+                  ? `<button class="mini-btn" disabled>审核中</button>`
+                  : item.status === '审核通过'
+                    ? `<button class="mini-btn" data-action="launch-one" data-index="${index}">投放</button>`
+                    : `<button class="mini-btn" data-action="quick-action" data-label="查看投放">查看投放</button>`;
+              return `
+              <div class="publish-row ${tone}">
+                <div class="publish-index">${index + 1}</div>
+                <div class="publish-main"><b>${item.name}</b><span>${item.account} · ${item.material}</span></div>
+                <div class="publish-flow">
+                  <span class="${['审核中','审核通过','投流中'].includes(item.status) ? 'done' : 'active'}">发布</span>
+                  <span class="${item.status === '审核中' ? 'active' : ['审核通过','投流中'].includes(item.status) ? 'done' : ''}">审核</span>
+                  <span class="${item.status === '投流中' ? 'done' : item.status === '审核通过' ? 'active' : ''}">投流</span>
+                </div>
+                ${tag(item.status, tone)}
+                <div class="publish-actions">${actionButton}</div>
+              </div>
+            `;
+            }).join('')}
           </div>
         </div>
+      `;
+    }
+    if (state.createStep === 3) {
+      return executionMonitorPage();
+    }
+    if (state.createStage === 'input') {
+      return `
+        <div class="ai-task-layout">
+          <div class="ai-task-main">
+            <section class="ai-task-card">
+              <div class="ai-task-head">
+                <span class="magic-icon">✣</span>
+                <div>
+                  <b>给AI操盘手下达投放任务</b>
+                  <p>请尽可能详细地描述你的投放需求，AI将为你解析并生成完整的投放计划。</p>
+                </div>
+                <button class="example-link" data-action="quick-action" data-label="试试示例任务">⌖ 不知道怎么写？试试示例任务</button>
+              </div>
+              <div class="prompt-box">
+                <textarea rows="7">帮我在上海浦东老房翻新，预算1.2万，先测试报价类和前后对比素材，周期7天。</textarea>
+                <span>36 / 1000</span>
+              </div>
+              <div class="prompt-actions">
+                <button class="mode-btn active">T 文字描述</button>
+                <button class="mode-btn">◉ 按住说话</button>
+                <button class="mode-btn">▣ 导入文件</button>
+                <em>支持 .doc / .txt / .pdf</em>
+                <button class="btn parse-btn" data-action="ai-parse-start">AI开始解析 →</button>
+              </div>
+            </section>
+            <div class="ai-dimension-grid">
+              ${[
+                ['◎', '投放目标', '明确核心目标与量化指标', '如：获取线索、表单提交'],
+                ['♙', '地域人群', '精准定位人群与投放地域', '如：上海浦东，30-45岁'],
+                ['¥', '预算设置', '合理分配预算与出价策略', '如：预算1.2万，CPM出价'],
+                ['▧', '素材方向', '创意方向与素材组合策略', '如：报价类、前后对比']
+              ].map(([icon, title, desc, sample]) => `
+                <div class="ai-dimension-card">
+                  <i>${icon}</i>
+                  <b>${title}</b>
+                  <span>${desc}</span>
+                  <em>${sample}</em>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <aside class="ai-output-card">
+            <div class="side-card">
+              <h3>✣ AI将输出什么</h3>
+              ${[
+                ['投放目标', '明确你的核心目标与预期效果'],
+                ['人群地域', '精准定位目标人群与投放地域'],
+                ['素材方向', '推荐素材创意方向与测试策略'],
+                ['预算周期', '合理分配预算与投放时间周期']
+              ].map(([title, text]) => `<div class="output-item"><i></i><b>${title}</b><span>${text}</span></div>`).join('')}
+            </div>
+            <div class="side-card example-card">
+              <h3>▣ 示例任务 <button data-action="quick-action" data-label="换一换">换一换</button></h3>
+              <p>北京二手房局改，预算8000，测试户型案例素材</p>
+              <p>杭州全屋定制，预算1.5万，测试环保卖点素材</p>
+              <p>深圳办公室装修，预算2万，测试性价比素材</p>
+            </div>
+          </aside>
+        </div>
+      `;
+    }
+    return `
+      <div class="step-stage-note">
+        <b>AI已解析出计划配置</b>
+        <p>AI已自动填入识别到的字段，未识别内容需要手动补充后匹配投放组合。</p>
+      </div>
+      <div class="plan-config-form">
+        <label class="field-label">获客方向<input value="老房翻新" /></label>
+        <label class="field-label">投放城市<input value="上海" /></label>
+        <label class="field-label">投放区域<input value="浦东" /></label>
+        <label class="field-label">总预算<input value="¥12,000" /></label>
+        <label class="field-label">投放周期<input value="7天" /></label>
+        <label class="field-label">素材偏好<select><option>报价口播 / 前后对比素材</option><option>报价图文</option><option>设计师口播</option></select></label>
+        <label class="field-label">账号范围<select><option>优先已授权账号</option><option>全部可投账号</option></select></label>
+        <label class="field-label needs-fill">特殊要求<textarea rows="3" placeholder="请输入AI未识别到的投放限制、排除素材、区域偏好等"></textarea></label>
+      </div>
+      <div class="step-action-row"><button class="btn" data-action="create-next-step">匹配投放组合</button><button class="mini-btn" data-action="ai-parse-reset">重新输入</button></div>
+    `;
+  }
 
-        <div class="business-grid ${state.businessView === 'list' ? 'list-view' : ''}">
-          ${visibleProducts.map(businessCard).join('')}
+  function legacyPlanDetailBody(plan) {
+    if (plan.stepIndex === 2) {
+      return `
+        <div class="combo-stage-list">
+          ${planCombos(plan).map(item => `
+            <div class="combo-stage-item ${item.tone}">
+              <div><b>${item.name}</b><span>${item.account} · ${item.material}</span></div>
+              ${tag(item.publishStatus, statusTone(item.publishStatus))}
+              <button class="mini-btn" data-action="quick-action" data-label="${item.action}">${item.action}</button>
+            </div>
+          `).join('')}
         </div>
-        <div class="business-pager">
-          <button class="mini-btn">‹</button><span>1</span><button class="mini-btn">›</button><em>共 ${visibleProducts.length} 条</em>
+      `;
+    }
+    if (plan.stepIndex >= 3) {
+      return `
+        <div class="plan-monitor-grid">
+          <div class="plan-monitor-chart">${planPerformanceChart(plan)}</div>
+          <div class="combo-stage-list">
+            ${planCombos(plan).map(item => `
+              <div class="combo-stage-item ${item.tone}">
+                <div><b>${item.name}</b><span>${item.account} · ${item.material}</span></div>
+                <strong>${item.spend} / ${item.leads}条 / ${item.cost}</strong>
+                ${tag(item.ai, item.tone)}
+              </div>
+            `).join('')}
+          </div>
         </div>
+      `;
+    }
+    return `
+      <div class="combo-stage-list">
+        ${planCombos(plan).map(item => `
+          <div class="combo-stage-item ${item.tone}">
+            <div><b>${item.name}</b><span>${item.account} · ${item.material}</span></div>
+            ${tag(item.budgetShare, 'blue')}
+            <button class="mini-btn" data-action="quick-action" data-label="调整组合">调整组合</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderPlanDetail() {
+    const plan = selectedPlan();
+    const activeStep = state.planStep ?? plan.stepIndex;
+    const stepNames = ['AI解析计划', '组合方案', '发布审核并投流', '监控调控'];
+    return `
+      <div class="plan-detail-page">
+        <div class="plan-detail-top">
+          <button class="mini-btn" data-action="plan-list">返回计划列表</button>
+          <div><h3>${plan.name}</h3><p>${plan.direction} · ${plan.city}/${plan.area}</p></div>
+          <div class="plan-detail-tags">${tag(plan.status, plan.tone)}${tag(stepNames[activeStep], 'blue')}</div>
+        </div>
+        <div class="plan-detail-kpis">
+          ${UI.info('总预算', plan.totalBudget)}
+          ${UI.info('已消耗', plan.spent)}
+          ${UI.info('已获客资', `${plan.leads}条`)}
+          ${UI.info('客资成本', plan.cost)}
+          ${UI.info('下一步动作', plan.nextAction)}
+        </div>
+        ${planSteps(activeStep, plan.stepIndex)}
+        <section class="plan-detail-grid">
+          <div class="card card-pad plan-stage-card">
+            <div class="dash-head"><h3>${stepNames[activeStep]}</h3>${tag(plan.ai, plan.tone)}</div>
+            ${planDetailBody(plan, activeStep)}
+          </div>
+          <aside class="card card-pad plan-log-card">
+            <div class="dash-head"><h3>AI工作日志</h3>${tag('当前计划', 'blue')}</div>
+            <div class="plan-log-list">
+              ${planLogs(plan).map(item => `<div><time>${item.time}</time><b>${item.title}</b><p>${item.text}</p></div>`).join('')}
+            </div>
+          </aside>
+        </section>
+      </div>
+    `;
+  }
+
+  function renderPlanCreate() {
+    const isMonitoring = state.createStep === 3;
+    return `
+      <div class="plan-detail-page ${isMonitoring ? 'monitor-mode' : 'create-mode'}">
+        <div class="plan-detail-top">
+          <button class="mini-btn" data-action="plan-list">返回计划列表</button>
+          <div><h3>${isMonitoring ? '投放执行监控' : '创建投放计划'}</h3><p>${isMonitoring ? '老房翻新获客计划 · 运行中' : '用一句话、语音输入或文件导入，让AI先解析计划配置。'}</p></div>
+          ${tag('AI解析计划', 'blue')}
+        </div>
+        ${planSteps(state.createStep, state.createMaxStep)}
+        <section class="plan-create-canvas">${planCreateBody()}</section>
       </div>
     `;
   }
 
   function renderMaterials() {
-    const published = data.materials.filter(item => item.publishStatus === '已发布').length;
-    const adAuditing = data.materials.filter(item => item.adAudit === '广告审核中').length;
-    const delivering = data.materials.filter(item => item.deliveryStatus === '投放中').length;
-    const reusable = data.materials.filter(item => item.deliveryStatus === '可复用').length;
+    const statusTabs = ['全部素材', '视频素材', '图文素材', '多次投放', '待复盘'];
+    const rows = data.materialRecommendations.map(item => `
+      <tr class="risk-row ${item.tone}">
+        <td><div class="material-title"><img src="${item.image}" alt="" /><div><b>${item.name}</b><span>${item.source}</span></div></div></td>
+        <td>${item.type}</td>
+        <td>${item.direction}</td>
+        <td>${item.used}</td>
+        <td>${item.performance}</td>
+        <td>${item.bestCombo}</td>
+        <td>${item.weakCombo}</td>
+        <td>${item.costRange}</td>
+        <td>${item.ai}</td>
+        <td>${actionButtons(['看投放记录', '加入组合'])}</td>
+      </tr>
+    `).join('');
     return `
-      <div class="grid-4">
-        ${UI.metric({ label: '已发布视频', value: published, trend: '可复用投流' })}
-        ${UI.metric({ label: '广告审核中', value: adAuditing, trend: '等待巨量审核', warn: true })}
-        ${UI.metric({ label: '投放中素材', value: delivering, trend: '正在消耗' })}
-        ${UI.metric({ label: '可复用素材', value: reusable, trend: '可跨业务投放' })}
-      </div>
-      <div class="card card-pad section">
-        <div class="list-row"><h3 class="font-semibold">素材与视频库</h3><button class="btn" data-action="material-upload">上传素材</button></div>
-        <div class="section">${UI.table(['素材','类型','关联业务','抖音号','发布状态','广告审核','投放状态','历史CPA','AI标签','AI建议','操作'], data.materials.map(m => UI.materialRow(m)))}</div>
+      <div class="operator-page">
+        <section class="cockpit-business-filter">${statusTabs.map((name, index) => `<button class="${index === 0 ? 'active' : ''}" data-action="quick-action" data-label="${name}">${name}</button>`).join('')}</section>
+        <div class="grid-4 section">
+          ${UI.metric({ label: '素材库存', value: '42 条', trend: '外部平台同步', tone: 'green' })}
+          ${UI.metric({ label: '多次投放素材', value: '18 条', trend: '可做组合复盘', tone: 'cyan' })}
+          ${UI.metric({ label: '高流量组合', value: '11 组', trend: '账号/计划相关', tone: 'green' })}
+          ${UI.metric({ label: '待复盘组合', value: '7 组', trend: '同素材表现分化', tone: 'purple', warn: true })}
+        </div>
+        <div class="card card-pad section">
+          <div class="dash-head"><h3>素材库</h3>${tag('素材资产 + 多计划表现', 'blue')}</div>
+          ${UI.table(['素材/视频', '类型', '获客方向', '投放次数', '表现分布', '高流量组合', '低流量组合', '成本区间', 'AI分析', '操作'], [rows])}
+        </div>
       </div>
     `;
   }
 
-  function renderRecords() {
+  function renderLeadPool() {
+    const rows = data.leads.map(item => `
+      <tr class="risk-row ${item.tone}">
+        <td><b>${item.id}</b><span>已脱敏</span></td>
+        <td>${item.source}</td>
+        <td>${item.city}</td>
+        <td>${item.area}</td>
+        <td>${item.demand}</td>
+        <td>${tag(item.intent, item.intent === '高意向' ? 'good' : item.intent === '中意向' ? 'warn' : 'bad')}</td>
+        <td>${item.budget}</td>
+        <td>${item.house}</td>
+        <td>${tag(item.distribution, item.tone)}</td>
+        <td>${actionButtons(['查看', '推荐分发'])}</td>
+      </tr>
+    `).join('');
     return `
-      <div class="grid-4">
-        ${data.growth.map(item => UI.metric({ label: item.label, value: item.value, trend: '持续更新' })).join('')}
+      <div class="operator-page">
+        <div class="grid-4">
+          ${UI.metric({ label: '今日客资', value: '16 条', trend: '投放回流', tone: 'green' })}
+          ${UI.metric({ label: '可分发客资', value: '12 条', trend: '等待处理', tone: 'cyan' })}
+          ${UI.metric({ label: '待分发', value: '4 条', trend: '轻量展示', tone: 'purple', warn: true })}
+          ${UI.metric({ label: '暂不分发', value: '1 条', trend: '预算不明', tone: 'green', warn: true })}
+        </div>
+        <div class="card card-pad section">
+          <div class="dash-head"><h3>客资池</h3>${tag('结果展示', 'blue')}</div>
+          ${UI.table(['客资ID', '来源组合', '城市', '区域', '需求分类', '意向等级', '预算', '房屋类型', '分发状态', '操作'], [rows])}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDistribution() {
+    const rows = data.distributions.map(item => `
+      <tr class="risk-row ${item.tone}">
+        <td><b>${item.lead}</b><span>${item.city}</span></td>
+        <td>${item.demand}</td>
+        <td>${item.recommended}</td>
+        <td>${item.reason}</td>
+        <td>${tag(item.status, item.tone)}</td>
+        <td>${actionButtons([item.action, '暂缓'])}</td>
+      </tr>
+    `).join('');
+    return `
+      <div class="operator-page">
+        <div class="grid-4">
+          ${UI.metric({ label: '待分发', value: '4 条', trend: '轻量确认', tone: 'green', warn: true })}
+          ${UI.metric({ label: 'AI已推荐', value: '3 条', trend: '按城市/业务', tone: 'cyan' })}
+          ${UI.metric({ label: '今日分发', value: '12 条', trend: '成功 10 条', tone: 'green' })}
+          ${UI.metric({ label: '需复核', value: '1 条', trend: '预算待确认', tone: 'purple', warn: true })}
+        </div>
+        <div class="card card-pad section">
+          <div class="dash-head"><h3>线索分发</h3>${tag('轻量结果流', 'warn')}</div>
+          ${UI.table(['待分发客资', '需求类型', 'AI推荐装企', '推荐原因', '分发状态', '操作'], [rows])}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCompanies() {
+    const rows = data.contractors.map(item => `
+      <tr class="risk-row ${item.tone}" data-action="customer-detail" data-name="${item.name}">
+        <td><b>${item.name}</b></td>
+        <td>${item.city}</td>
+        <td>${item.business}</td>
+        <td>${item.area}</td>
+        <td>${item.assigned}条</td>
+        <td>${item.feedback}</td>
+        <td>${item.dealRate}</td>
+        <td>${tag(item.status, item.tone)}</td>
+        <td>${actionButtons(['查看承接'])}</td>
+      </tr>
+    `).join('');
+    return `
+      <div class="operator-page">
+        <div class="grid-4">
+          ${UI.metric({ label: '承接装企', value: `${data.contractors.length} 家`, trend: '按城市匹配', tone: 'green' })}
+          ${UI.metric({ label: '今日已分发', value: '12 条', trend: '轻量展示', tone: 'cyan' })}
+          ${UI.metric({ label: '反馈异常', value: '1 家', trend: '需观察', tone: 'purple', warn: true })}
+          ${UI.metric({ label: '平均反馈率', value: '74%', trend: '仅作参考', tone: 'green' })}
+        </div>
+        <div class="card card-pad section">
+          <div class="dash-head"><h3>装企承接</h3>${tag('线索承接方', 'blue')}</div>
+          ${UI.table(['装企名称', '城市', '可承接业务', '服务区域', '今日已分发', '反馈率', '成交率', '承接状态', '操作'], [rows])}
+        </div>
+      </div>
+    `;
+  }
+
+  function openPlanModal() {
+    state.pendingPlan = {
+      name: '老房翻新6月加量计划',
+      direction: '老房翻新',
+      city: '上海',
+      area: '浦东 / 徐汇',
+      totalBudget: '¥12,000',
+      period: '7天'
+    };
+    $('#planModal .modal-head h3').textContent = '创建获客计划 · AI生成投放组合';
+    $('#planModal .modal-actions').innerHTML = `
+      <button class="btn" data-action="confirm-plan">提交发布审核</button>
+      <button class="btn secondary" data-action="close-modal">继续调整</button>
+    `;
+    $('#modalBody').innerHTML = `
+      <div class="plan-flow compact-flow">
+        ${['填写基础目标', 'AI匹配账号', 'AI推荐素材', '选择投放组合', '发布视频审核', '审核通过投流'].map((step, index) => `<span>${index + 1}. ${step}</span>`).join('')}
       </div>
       <div class="grid-2 section">
-        <div class="card card-pad">
-          <h3 class="font-semibold">投放计划</h3>
-          <div class="section">${UI.table(['计划','业务','素材','广告审核','投放状态','预算','消耗','CPA','AI动作'], data.plans.map(p => UI.planRow(p)))}</div>
-        </div>
-        <div class="card card-pad">
-          <h3 class="font-semibold">AI操作日志</h3>
-          <div class="list section">${data.workLogs.map(item => UI.log(item)).join('')}</div>
-        </div>
+        ${UI.info('获客方向', state.pendingPlan.direction)}
+        ${UI.info('城市/区域', `${state.pendingPlan.city} · ${state.pendingPlan.area}`)}
+        ${UI.info('总预算', state.pendingPlan.totalBudget)}
+        ${UI.info('投放周期', state.pendingPlan.period)}
+        ${UI.info('参考客资成本', 'AI生成，非必填')}
+        ${UI.info('账号/素材', 'AI默认匹配，人工可改')}
       </div>
-      <div class="card card-pad section">
-        <h3 class="font-semibold">账号表现排行</h3>
-        <div class="grid-4 section">
-          ${data.accounts.map((account, index) => `
-            <div class="asset-card rank-item" data-action="rank-account" data-name="${account.name}">
-              <div class="list-row"><b>${index + 1}. ${account.name}</b>${UI.tag(account.status === '待授权' ? '待授权' : account.primary ? '主投账号' : '投放账号', account.status === '待授权' ? 'warn' : account.primary ? 'good' : 'blue')}</div>
-              <p class="muted mt-3 text-sm">CPA ${account.cpa} / ${account.advice}</p>
+      <div class="combo-choice-head section">
+        <div>
+          <b>AI投放组合方案</b>
+          <p>默认勾选AI推荐组合，运营可以取消、调整预算占比，或新增一组自定义组合后再上线。</p>
+        </div>
+        <button class="mini-btn" data-action="quick-action" data-label="新增自定义组合">新增自定义组合</button>
+      </div>
+      <div class="combo-draft section">
+        ${[
+          ['组合A', '星辰老房翻新号', '老房前后对比 v2.1 / 报价避坑口播', '45%', '待发布', '账号近7天老房翻新成本低，素材在该账号复投数据稳定', 'checked'],
+          ['组合B', '浦东门店号', '报价避坑口播 v1.3', '35%', '待发布', '更容易吸引浦东报价咨询用户', 'checked'],
+          ['组合C', '设计师阿林', '老房设计师讲解 v1', '20%', '待发布', '小预算测试设计需求，AI建议先观察', 'checked'],
+          ['自定义组合', '选择抖音号', '选择素材/视频', '0%', '待配置', '运营可自行指定账号、素材和预算占比', '']
+        ].map(([name, account, material, budget, status, reason, checked]) => `
+          <div class="asset-card combo-option ${checked ? 'selected' : ''}">
+            <div class="combo-option-head">
+              <label class="combo-check">
+                <input type="checkbox" ${checked ? 'checked' : ''} />
+                <span></span>
+                <b>${name}</b>
+              </label>
+              <div class="combo-tags">${tag(status, statusTone(status))}${tag(`预算占比 ${budget}`, checked ? 'blue' : 'gray')}</div>
             </div>
-          `).join('')}
-        </div>
+            <div class="combo-option-grid">
+              <div>
+                <label>抖音号</label>
+                <strong>${account}</strong>
+              </div>
+              <div>
+                <label>素材/视频</label>
+                <strong>${material}</strong>
+              </div>
+              <div>
+                <label>预算占比</label>
+                <strong>${budget}</strong>
+              </div>
+              <div>
+                <label>投放前状态</label>
+                <strong>${status}</strong>
+              </div>
+            </div>
+            <p class="weak mt-2 text-xs">推荐原因：${reason}</p>
+            <div class="actions mt-3">
+              <button class="mini-btn" data-action="quick-action" data-label="调整账号">调整账号</button>
+              <button class="mini-btn" data-action="quick-action" data-label="替换素材">替换素材</button>
+              <button class="mini-btn" data-action="quick-action" data-label="调整预算占比">调整预算</button>
+              <button class="mini-btn" data-action="quick-action" data-label="发布视频">发布视频</button>
+            </div>
+          </div>
+        `).join('')}
       </div>
-    `;
-  }
-
-  function render() {
-    const view = $('#view');
-    const pages = {
-      home: renderHome,
-      business: renderBusiness,
-      assets: renderAssets,
-      materials: renderMaterials,
-      records: renderRecords
-    };
-    view.innerHTML = pages[state.page]();
-  }
-
-  function openPlanModal(product, account) {
-    const reusable = data.materials.find(item => item.product.includes(product) && item.publishStatus === '已发布') || data.materials.find(item => item.deliveryStatus === '可复用') || data.materials[0];
-    const mode = reusable.publishStatus === '已发布' ? '复用已发布视频投流' : '发布后提交广告审核';
-    state.pendingPlan = { product, account, material: reusable.name, mode };
-    $('#planModal .modal-head h3').textContent = 'AI已生成投放计划草案';
-    $('#planModal .modal-actions').innerHTML = `
-      <button class="btn" data-action="confirm-plan">确认创建</button>
-      <button class="btn secondary" data-action="close-modal">暂不创建</button>
-    `;
-    $('#modalBody').innerHTML = `
-      <div class="grid-2">
-        ${UI.info('目标业务', product)}
-        ${UI.info('推荐账号', account)}
-        ${UI.info('推荐素材', reusable.name)}
-        ${UI.info('投流方式', mode)}
-        ${UI.info('预算建议', '日预算 ¥800')}
-        ${UI.info('预计CPA', '¥140 - ¥180')}
-      </div>
-      <div class="asset-card section">
-        <b>审核链路</b>
-        <p class="muted mt-2 text-sm">${reusable.publishStatus} → 提交巨量广告审核 → 审核通过后开始投流 → 数据回流驾驶舱</p>
-      </div>
-    `;
-    $('#planModal').classList.add('show');
-  }
-
-  function openBusinessModal() {
-    $('#modalBody').innerHTML = `
-      <div class="grid-2">
-        <label class="field-label">业务名称<input id="businessName" value="局部改造"></label>
-        <label class="field-label">推荐账号<input id="businessAccount" value="星辰装饰官方号"></label>
-        <label class="field-label">业务状态<input id="businessStatus" value="储备"></label>
-        <label class="field-label">AI建议<input id="businessAdvice" value="待素材完善"></label>
-      </div>
-    `;
-    $('#planModal .modal-head h3').textContent = '新增推广业务';
-    $('#planModal .modal-actions').innerHTML = `
-      <button class="btn" data-action="confirm-business">确认新增</button>
-      <button class="btn secondary" data-action="close-modal">取消</button>
     `;
     $('#planModal').classList.add('show');
   }
 
   function closePlanModal() {
     $('#planModal').classList.remove('show');
-    $('#planModal .modal-head h3').textContent = 'AI已生成投放计划草案';
-    $('#planModal .modal-actions').innerHTML = `
-      <button class="btn" data-action="confirm-plan">确认创建</button>
-      <button class="btn secondary" data-action="close-modal">暂不创建</button>
-    `;
+  }
+
+  function confirmPlan() {
+    const p = state.pendingPlan;
+    data.plans.unshift({
+      name: p.name,
+      direction: p.direction,
+      city: p.city,
+      area: p.area,
+      totalBudget: p.totalBudget,
+      period: '06-23 至 06-30',
+      pace: 'AI均衡消耗',
+      materialType: '前后对比 / 报价口播',
+      materialCount: 5,
+      accountCount: 3,
+      status: '待上线',
+      ai: '已生成3个投放组合，等待视频发布审核',
+      tone: 'blue'
+    });
+    closePlanModal();
+    setPage('acquisition');
+    toast('获客计划已创建，组合进入视频发布审核流程');
+  }
+
+  function render() {
+    const pages = {
+      home: renderHome,
+      acquisition: renderAcquisition,
+      materials: renderMaterials,
+      leads: renderLeadPool,
+      distribution: renderDistribution,
+      companies: renderCompanies
+    };
+    $('#view').innerHTML = pages[state.page]();
+    updateMonitorChrome();
   }
 
   function handleClick(event) {
     const navBtn = event.target.closest('.nav-btn');
     if (navBtn) return setPage(navBtn.dataset.page);
 
-    const jumpBtn = event.target.closest('[data-page-jump]');
-    if (jumpBtn) return setPage(jumpBtn.dataset.pageJump);
-
     const actionEl = event.target.closest('[data-action]');
     if (!actionEl) return;
     const action = actionEl.dataset.action;
 
     if (action === 'start-app') return startApp();
-    if (action === 'logout') toast('已退出登录');
-    if (action === 'confirm-suggestion') toast('AI建议已确认，正在执行');
-    if (action === 'adjust-goal') $('#goalInput')?.focus();
-    if (action === 'send-goal') toast('AI已生成执行方案');
-    if (action === 'quick-goal') {
-      $('#goalInput').value = actionEl.dataset.text;
-      toast('已填入目标');
-    }
-    if (action === 'auth-detail') toast('已打开授权详情');
-    if (action === 'balance-alert') toast('余额提醒设置成功');
-    if (action === 'sync-account') {
-      $('#syncTime').textContent = '刚刚同步';
-      toast('巨量引擎账户数据已同步');
-    }
-    if (action === 'show-account') toast(`已打开${actionEl.dataset.name}表现`);
-    if (action === 'primary-account') {
-      data.accounts.forEach(item => item.primary = item.id === actionEl.dataset.id);
+    if (action === 'logout') return toast('已退出登录');
+    if (action === 'customer-detail') return toast(`查看装企承接：${actionEl.dataset.name}`);
+    if (action === 'plan-create') {
+      clearPublishAuditTimers();
+      state.planView = 'create';
+      state.createStep = 0;
+      state.createMaxStep = 0;
+      state.createStage = 'input';
+      state.createPublish = initialPublishCombos();
+      state.createComboSerial = 4;
       render();
-      toast('已加入优先投放组合');
+      return;
     }
-    if (action === 'auth-account') {
-      const account = data.accounts.find(item => item.id === actionEl.dataset.id);
-      account.status = '已授权';
-      account.advice = account.advice === '待授权' ? '可投放' : account.advice;
+    if (action === 'plan-list') {
+      clearPublishAuditTimers();
+      state.planView = 'list';
+      state.planStep = null;
       render();
-      toast('账号授权状态已更新');
+      return;
     }
-    if (action === 'product-detail') toast(`已打开${actionEl.dataset.name}业务详情`);
-    if (action === 'dash-business') {
-      state.dashBusiness = actionEl.dataset.business;
-      state.dashFilter = '按业务';
-      state.dashTab = 'current';
-      state.dashSelected = state.dashBusiness === '全部业务' ? 'all' : businessId(state.dashBusiness);
+    if (action === 'plan-detail') {
+      state.selectedPlanId = actionEl.dataset.planId;
+      state.planView = 'detail';
+      state.planStep = selectedPlan().stepIndex;
       render();
-      toast(`已切换到${state.dashBusiness}数据`);
+      return;
     }
-    if (action === 'business-filter') {
-      state.businessFilter = actionEl.dataset.filter;
+    if (action === 'plan-step') {
+      if (actionEl.disabled) return;
+      if (state.planView === 'create') {
+        state.createStep = Number(actionEl.dataset.step);
+        if (state.createStep > 0 && state.createStage !== 'result') state.createStage = 'result';
+        render();
+        return;
+      }
+      state.planStep = Number(actionEl.dataset.step);
       render();
-      toast(`已筛选${state.businessFilter}业务`);
+      return;
     }
-    if (action === 'business-view') {
-      state.businessView = actionEl.dataset.view;
+    if (action === 'plan-next-step') {
+      const plan = selectedPlan();
+      const current = state.planStep ?? plan.stepIndex;
+      state.planStep = Math.min(current + 1, 3);
       render();
+      return toast('已进入下一步');
     }
-    if (action === 'business-sort') toast('已按AI建议优先级排序');
-    if (action === 'add-business') openBusinessModal();
-    if (action === 'confirm-business') {
-      const name = $('#businessName')?.value.trim() || '新增业务';
-      const account = $('#businessAccount')?.value.trim() || '星辰装饰官方号';
-      const status = $('#businessStatus')?.value.trim() || '储备';
-      const advice = $('#businessAdvice')?.value.trim() || '待素材完善';
-      data.products.unshift({ name, status, account, cpa: '-', advice });
-      closePlanModal();
+    if (action === 'ai-parse-start') {
+      showAiFullscreenLoader(() => {
+        state.createStage = 'result';
+        state.createStep = 0;
+        render();
+        toast('AI已完成计划解析');
+      });
+      return;
+    }
+    if (action === 'ai-parse-reset') {
+      clearPublishAuditTimers();
+      state.createStage = 'input';
+      state.createStep = 0;
+      state.createMaxStep = 0;
+      state.createPublish = initialPublishCombos();
+      state.createComboSerial = 4;
       render();
-      toast('推广业务已新增');
+      return;
     }
-    if (action === 'plan-draft') openPlanModal(actionEl.dataset.product, actionEl.dataset.account);
-    if (action === 'material-upload') toast('已打开素材上传');
-    if (action === 'reuse-material') toast(`${actionEl.dataset.name}已加入可复用素材池`);
-    if (action === 'rank-account') toast(`已高亮 ${actionEl.dataset.name}`);
-    if (action === 'dash-tab') {
-      state.dashTab = actionEl.dataset.tab;
+    if (action === 'create-next-step') {
+      if (state.planView === 'create' && state.createStep === 1 && comboBudgetTotal() > 100) {
+        return toast('预算占比合计不能超过100%');
+      }
+      if (state.planView === 'create' && state.createStep === 0 && state.createStage === 'result') {
+        showAiFullscreenLoader(() => {
+          state.createStage = 'result';
+          state.createStep = 1;
+          state.createMaxStep = Math.max(state.createMaxStep, 1);
+          render();
+          toast('AI已完成投放组合匹配');
+        });
+        return;
+      }
+      state.createStage = 'result';
+      state.createStep = Math.min(state.createStep + 1, 3);
+      state.createMaxStep = Math.max(state.createMaxStep, state.createStep);
       render();
+      return toast('已进入下一步');
     }
-    if (action === 'dash-filter') {
-      state.dashFilter = actionEl.dataset.filter;
-      if (state.dashFilter === '全部投放') {
-        state.dashSelected = 'all';
-        state.dashBusiness = '全部业务';
-      } else {
-        const items = cockpitCurrentItems(data.dashboard.cockpit);
-        state.dashSelected = items[0]?.id || 'all';
+    if (action === 'create-prev-step') {
+      state.createStep = Math.max(state.createStep - 1, 0);
+      render();
+      return;
+    }
+    if (action === 'delete-combo') {
+      if (state.createPublish.length <= 1) return toast('至少保留一个组合');
+      const index = Number(actionEl.dataset.index);
+      const removed = state.createPublish.splice(index, 1)[0];
+      render();
+      return toast(`${removed?.name || '组合'}已删除`);
+    }
+    if (action === 'add-combo') {
+      const account = $('#comboAccountSelect')?.value || '星辰老房翻新号';
+      const material = $('#comboMaterialSelect')?.value || '老房前后对比 v2.1';
+      const name = `组合${String.fromCharCode(64 + state.createComboSerial)}`;
+      state.createComboSerial += 1;
+      state.createPublish.push({
+        name,
+        account,
+        material,
+        budget: '0%',
+        reason: '运营手动新增组合',
+        status: '待发布'
+      });
+      render();
+      return toast(`${name}已新增`);
+    }
+    if (action === 'publish-one') {
+      const index = Number(actionEl.dataset.index);
+      const item = state.createPublish[index];
+      if (item) {
+        item.status = '审核中';
+        scheduleAuditPass(index);
       }
       render();
-      toast(`已切换为${state.dashFilter}`);
+      return toast('已发布视频，正在审核');
     }
-    if (action === 'dash-metric-mode') {
-      state.dashMetric = state.dashMetric === 'multi' ? 'cpa' : 'multi';
+    if (action === 'publish-all') {
+      state.createPublish.forEach((item, index) => {
+        if (item.status === '待发布') {
+          item.status = '审核中';
+          scheduleAuditPass(index, 700 + index * 450);
+        }
+      });
       render();
-      toast(state.dashMetric === 'multi' ? '已切换为多指标对比' : '已切换为只看CPA');
+      return toast('已一键发布，自动进入审核');
+    }
+    if (action === 'approve-one') {
+      const item = state.createPublish[Number(actionEl.dataset.index)];
+      if (item) item.status = '审核通过';
+      render();
+      return toast('视频审核通过');
+    }
+    if (action === 'launch-one') {
+      const item = state.createPublish[Number(actionEl.dataset.index)];
+      if (item) item.status = '投流中';
+      if (state.createPublish.every(row => row.status === '投流中')) {
+        state.createStep = 3;
+        state.createMaxStep = 3;
+      }
+      render();
+      return toast('已启动投放');
+    }
+    if (action === 'launch-all') {
+      state.createPublish.forEach(item => {
+        if (item.status === '审核通过') item.status = '投流中';
+      });
+      state.createStep = 3;
+      state.createMaxStep = 3;
+      render();
+      return toast('已一键投放，进入监控');
+    }
+    if (action === 'go-monitor-dashboard') {
+      state.planView = 'list';
+      state.planStep = null;
+      return setPage('home');
+    }
+    if (action === 'quick-action') return toast(`${actionEl.dataset.label || actionEl.textContent.trim()}已记录`);
+    if (action === 'dash-filter') {
+      state.dashFilter = actionEl.dataset.filter;
+      state.dashEntity = dimensionOptions()[0].label;
+      render();
+      return toast(`已切换为${state.dashFilter}`);
+    }
+    if (action === 'dash-entity') {
+      state.dashEntity = actionEl.dataset.entity;
+      render();
+      return toast(`已切换对象：${state.dashEntity}`);
     }
     if (action === 'dash-grain') {
       state.dashGrain = actionEl.dataset.grain;
       render();
-      toast(`已切换为${state.dashGrain}`);
+      return toast(`已切换为${state.dashGrain}`);
     }
-    if (action === 'select-cockpit-row') {
-      state.dashSelected = actionEl.dataset.id;
-      render();
-    }
-    if (action === 'select-history-row' || action === 'select-focus-row') toast(`已选中 ${actionEl.dataset.name}`);
-    if (action === 'cockpit-row-action') toast(`AI市场经理已收到：${actionEl.dataset.name}`);
-    if (action === 'close-modal') closePlanModal();
-    if (action === 'confirm-plan') {
-      const pending = state.pendingPlan || { product: '推广业务', account: '星辰装饰官方号', material: '推荐素材', mode: '复用已发布视频投流' };
-      data.plans.unshift({
-        name: `${pending.product}-AI新计划`,
-        business: pending.product,
-        material: pending.material,
-        adAudit: '广告审核中',
-        status: '待审核',
-        budget: '¥800',
-        cost: '¥0',
-        leads: '0',
-        cpa: '-',
-        action: '等待巨量审核'
-      });
-      const material = data.materials.find(item => item.name === pending.material);
-      if (material) {
-        material.adAudit = '广告审核中';
-        material.deliveryStatus = '审核中';
-        material.product = Array.from(new Set(`${material.product} / ${pending.product}`.split(' / '))).join(' / ');
-      }
-      state.pendingPlan = null;
-      closePlanModal();
-      setPage('records');
-      toast('投放计划已创建，正在等待巨量广告审核');
-    }
+    if (action === 'plan-draft') return openPlanModal();
+    if (action === 'close-modal') return closePlanModal();
+    if (action === 'confirm-plan') return confirmPlan();
+  }
+
+  function handleInput(event) {
+    const input = event.target.closest('[data-action="budget-input"]');
+    if (!input) return;
+    const item = state.createPublish[Number(input.dataset.index)];
+    if (!item) return;
+    const value = Math.max(0, Math.min(100, Number(input.value || 0)));
+    item.budget = `${value}%`;
+    render();
   }
 
   document.addEventListener('click', handleClick);
+  document.addEventListener('change', handleInput);
+  updateChrome();
   renderNav();
   render();
   if (location.hash === '#app') startApp();
