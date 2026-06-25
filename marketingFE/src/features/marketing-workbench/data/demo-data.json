@@ -1,0 +1,850 @@
+{
+  "productName": "AI投流操盘手",
+  "operator": {
+    "name": "Admin",
+    "role": "平台运营账号",
+    "platform": "上海星辰装饰",
+    "giantStatus": "巨量已授权",
+    "accountReady": "可投账号 3/4",
+    "balance": "¥18,600",
+    "todaySpend": "¥2,860",
+    "availableDays": "预计可投 6.5 天",
+    "lastInspection": "10:30",
+    "nextInspection": "11:00",
+    "pendingActions": 6,
+    "risks": 6
+  },
+  "nav": [
+    {
+      "id": "home",
+      "label": "操盘纵览",
+      "icon": "⌂"
+    },
+    {
+      "id": "acquisition",
+      "label": "投放计划",
+      "icon": "▤"
+    },
+    {
+      "id": "auth",
+      "label": "授权管理",
+      "icon": "◇"
+    },
+    {
+      "id": "materials",
+      "label": "素材库",
+      "icon": "▧"
+    },
+    {
+      "id": "leads",
+      "label": "线索管理",
+      "icon": "▦"
+    },
+    {
+      "id": "distribution",
+      "label": "线索分发",
+      "icon": "⇄"
+    },
+    {
+      "id": "companies",
+      "label": "装企承接",
+      "icon": "▣"
+    }
+  ],
+  "giantAuth": {
+    "status": "unbound",
+    "accountName": "上海星辰装饰巨量引擎主账户",
+    "accountId": "AD-1098-5623-2048",
+    "subject": "上海星辰装饰工程有限公司",
+    "authorizedAt": "2026-06-18 14:22",
+    "expiresAt": "2027-06-18 14:22",
+    "balance": "¥18,600",
+    "availableAccountCount": 3,
+    "lastSyncAt": "2026-06-24 10:30",
+    "accounts": [
+      {
+        "name": "星辰老房翻新号",
+        "platform": "巨量引擎",
+        "type": "抖音号",
+        "authStatus": "已授权",
+        "deliveryStatus": "可投放",
+        "syncedAt": "2026-06-24 10:30",
+        "tone": "good",
+        "reason": "账户余额充足，投放权限正常"
+      },
+      {
+        "name": "浦东门店号",
+        "platform": "巨量引擎",
+        "type": "抖音号",
+        "authStatus": "已授权",
+        "deliveryStatus": "可投放",
+        "syncedAt": "2026-06-24 10:30",
+        "tone": "good",
+        "reason": "可用于报价咨询和门店转化计划"
+      },
+      {
+        "name": "设计师阿林",
+        "platform": "巨量引擎",
+        "type": "抖音号",
+        "authStatus": "已授权",
+        "deliveryStatus": "可投放",
+        "syncedAt": "2026-06-24 10:28",
+        "tone": "good",
+        "reason": "可用于整装报价和设计需求测试"
+      },
+      {
+        "name": "华府高端案例号",
+        "platform": "巨量引擎",
+        "type": "抖音号",
+        "authStatus": "已授权",
+        "deliveryStatus": "暂停投放",
+        "syncedAt": "2026-06-24 10:25",
+        "tone": "warn",
+        "reason": "近两次高端设计计划转化偏弱，建议复核后再投放"
+      }
+    ]
+  },
+  "cockpit": {
+    "date": "2026-06-23",
+    "metrics": [
+      {
+        "label": "今日消耗",
+        "value": "¥2,860",
+        "trend": "较昨日 +8.2%",
+        "tone": "bad",
+        "icon": "¥",
+        "series": [
+          22,
+          27,
+          26,
+          38,
+          30,
+          35,
+          33
+        ]
+      },
+      {
+        "label": "今日客资",
+        "value": "16 条",
+        "trend": "较昨日 +4 条",
+        "tone": "good",
+        "icon": "●",
+        "series": [
+          16,
+          20,
+          19,
+          25,
+          24,
+          28,
+          31
+        ]
+      },
+      {
+        "label": "平均客资成本",
+        "value": "¥178/条",
+        "trend": "较昨日 -9.6%",
+        "tone": "good",
+        "icon": "◎",
+        "series": [
+          210,
+          196,
+          188,
+          194,
+          176,
+          162,
+          178
+        ]
+      },
+      {
+        "label": "当前在投组合",
+        "value": "12 个",
+        "trend": "4个观察中",
+        "tone": "blue",
+        "icon": "□",
+        "progress": 68
+      },
+      {
+        "label": "待确认动作",
+        "value": "4 项",
+        "trend": "较昨日 +1 项",
+        "tone": "warn",
+        "icon": "◔",
+        "bars": [
+          22,
+          25,
+          31,
+          35,
+          48,
+          62,
+          70,
+          82
+        ]
+      },
+      {
+        "label": "风险预警",
+        "value": "4 项",
+        "trend": "1项高风险",
+        "tone": "bad",
+        "icon": "!",
+        "series": [
+          12,
+          16,
+          14,
+          20,
+          17,
+          29,
+          39
+        ]
+      }
+    ],
+    "filters": [
+      "全部方向",
+      "老房翻新",
+      "全屋整装",
+      "厨卫改造",
+      "高端设计",
+      "免费量房",
+      "装修报价"
+    ]
+  },
+  "plans": [
+    {
+      "id": "plan-oldhouse",
+      "name": "老房翻新6月获客计划",
+      "direction": "老房翻新",
+      "city": "上海",
+      "area": "浦东 / 徐汇",
+      "totalBudget": "¥12,000",
+      "spent": "¥2,116",
+      "leads": 14,
+      "cost": "¥151/条",
+      "period": "06-20 至 06-30",
+      "pace": "AI均衡消耗",
+      "materialType": "前后对比 / 报价口播",
+      "materialCount": 6,
+      "accountCount": 3,
+      "status": "监控中",
+      "step": "监控调控",
+      "stepIndex": 3,
+      "nextAction": "处理2条AI建议",
+      "adviceCount": 2,
+      "anomaly": "浦东成本需观察",
+      "ai": "已进入实时监控，建议扩量老房翻新-A1",
+      "tone": "good",
+      "trend": [
+        24,
+        30,
+        36,
+        34,
+        42,
+        48,
+        52
+      ]
+    },
+    {
+      "id": "plan-whole",
+      "name": "整装报价线索测试",
+      "direction": "全屋整装",
+      "city": "上海",
+      "area": "闵行 / 宝山",
+      "totalBudget": "¥8,000",
+      "spent": "¥412",
+      "leads": 2,
+      "cost": "¥206/条",
+      "period": "06-22 至 06-29",
+      "pace": "先小量测试",
+      "materialType": "报价图文 / 口播",
+      "materialCount": 4,
+      "accountCount": 2,
+      "status": "待发布审核",
+      "step": "发布审核并投流",
+      "stepIndex": 2,
+      "nextAction": "发布视频并等待审核",
+      "adviceCount": 1,
+      "anomaly": "1个组合未发布",
+      "ai": "建议先发布报价图文组合，审核通过后自动投流",
+      "tone": "warn",
+      "trend": [
+        8,
+        12,
+        10,
+        14,
+        13,
+        16,
+        15
+      ]
+    },
+    {
+      "id": "plan-kitchen",
+      "name": "厨卫局改专项计划",
+      "direction": "厨卫改造",
+      "city": "苏州",
+      "area": "姑苏 / 吴中",
+      "totalBudget": "¥6,000",
+      "spent": "¥1,060",
+      "leads": 9,
+      "cost": "¥118/条",
+      "period": "06-18 至 06-28",
+      "pace": "稳定投放",
+      "materialType": "施工前后对比",
+      "materialCount": 5,
+      "accountCount": 2,
+      "status": "投放中",
+      "step": "监控调控",
+      "stepIndex": 3,
+      "nextAction": "投放满1小时后开启监控",
+      "adviceCount": 0,
+      "anomaly": "数据积累中",
+      "ai": "账号流量稳定，等待完整小时级数据",
+      "tone": "blue",
+      "trend": [
+        16,
+        18,
+        22,
+        25,
+        26,
+        28,
+        31
+      ]
+    },
+    {
+      "id": "plan-design",
+      "name": "高端设计意向筛选",
+      "direction": "高端设计",
+      "city": "北京",
+      "area": "朝阳 / 海淀",
+      "totalBudget": "¥10,000",
+      "spent": "¥332",
+      "leads": 0,
+      "cost": "-",
+      "period": "06-21 至 07-02",
+      "pace": "控量测试",
+      "materialType": "案例混剪 / 设计师口播",
+      "materialCount": 3,
+      "accountCount": 2,
+      "status": "异常",
+      "step": "发布审核并投流",
+      "stepIndex": 2,
+      "nextAction": "改素材后重新发布",
+      "adviceCount": 2,
+      "anomaly": "视频审核未过",
+      "ai": "审核未过，建议改素材后重新发布",
+      "tone": "bad",
+      "trend": [
+        10,
+        9,
+        7,
+        6,
+        4,
+        3,
+        2
+      ]
+    },
+    {
+      "id": "plan-new",
+      "name": "下沉整装试投计划",
+      "direction": "装修报价",
+      "city": "杭州",
+      "area": "临平 / 富阳",
+      "totalBudget": "¥5,000",
+      "spent": "¥0",
+      "leads": 0,
+      "cost": "-",
+      "period": "待确认",
+      "pace": "待AI解析",
+      "materialType": "待解析",
+      "materialCount": 0,
+      "accountCount": 0,
+      "status": "配置中",
+      "step": "AI解析计划",
+      "stepIndex": 0,
+      "nextAction": "补充预算周期",
+      "adviceCount": 0,
+      "anomaly": "缺少周期",
+      "ai": "已识别城市和方向，等待补齐预算周期",
+      "tone": "warn",
+      "trend": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "combinations": [
+    {
+      "name": "老房翻新-A1",
+      "plan": "老房翻新6月获客计划",
+      "direction": "老房翻新",
+      "city": "上海",
+      "account": "星辰老房翻新号",
+      "material": "老房前后对比 v2.1",
+      "budgetShare": "40%",
+      "publishStatus": "投流中",
+      "spend": "¥1,260",
+      "leads": 8,
+      "cost": "¥158",
+      "trend": "上涨",
+      "ai": "建议扩量",
+      "action": "加预算",
+      "tone": "good"
+    },
+    {
+      "name": "老房翻新-B1",
+      "plan": "老房翻新6月获客计划",
+      "direction": "老房翻新",
+      "city": "上海",
+      "account": "浦东门店号",
+      "material": "报价避坑口播 v1.3",
+      "budgetShare": "30%",
+      "publishStatus": "可投流",
+      "spend": "¥856",
+      "leads": 6,
+      "cost": "¥143",
+      "trend": "稳定",
+      "ai": "审核通过，可继续投流",
+      "action": "启动投流",
+      "tone": "good"
+    },
+    {
+      "name": "整装报价-C1",
+      "plan": "整装报价线索测试",
+      "direction": "全屋整装",
+      "city": "上海",
+      "account": "设计师阿林",
+      "material": "全屋报价图文 v3",
+      "budgetShare": "20%",
+      "publishStatus": "视频审核中",
+      "spend": "¥412",
+      "leads": 2,
+      "cost": "¥206",
+      "trend": "下降",
+      "ai": "等待审核后再投流",
+      "action": "查看审核",
+      "tone": "warn"
+    },
+    {
+      "name": "高端设计-D1",
+      "plan": "高端设计意向筛选",
+      "direction": "高端设计",
+      "city": "北京",
+      "account": "华府高端案例号",
+      "material": "高端案例混剪",
+      "budgetShare": "10%",
+      "publishStatus": "审核未过",
+      "spend": "¥332",
+      "leads": 0,
+      "cost": "-",
+      "trend": "低效",
+      "ai": "先改素材再发布",
+      "action": "改素材",
+      "tone": "bad"
+    }
+  ],
+  "aiActions": [
+    {
+      "time": "今日 10:30",
+      "status": "待确认",
+      "type": "加预算",
+      "target": "老房翻新-A1",
+      "evidence": "近3小时客资成本稳定在 ¥150-165，账号流量仍有余量",
+      "recommendation": "预算占比从40%提升到50%，优先吃老房翻新流量",
+      "expected": "预计今日多拿4-6条客资",
+      "risk": "低",
+      "tone": "good",
+      "buttons": [
+        "确认扩量",
+        "调整占比"
+      ]
+    },
+    {
+      "time": "今日 10:18",
+      "status": "待确认",
+      "type": "替换素材",
+      "target": "整装报价-C1",
+      "evidence": "点击正常但表单提交少，客资成本连续2小时高于组合均值",
+      "recommendation": "替换为“报价明细口播 v2”，保留当前账号继续测试",
+      "expected": "预计客资成本下降 12%-18%",
+      "risk": "中",
+      "tone": "warn",
+      "buttons": [
+        "换素材",
+        "查看素材"
+      ]
+    },
+    {
+      "time": "昨日 18:40",
+      "status": "未处理",
+      "type": "暂停低效组合",
+      "target": "高端设计-D1",
+      "evidence": "已消耗 ¥332 仍无客资，账号历史对高端设计转化弱",
+      "recommendation": "暂停该组合，把预算转移到设计师口播素材",
+      "expected": "避免继续空耗",
+      "risk": "高",
+      "tone": "bad",
+      "buttons": [
+        "确认暂停",
+        "继续观察"
+      ]
+    },
+    {
+      "time": "昨日 16:05",
+      "status": "观察中",
+      "type": "新增账号",
+      "target": "厨卫局改专项计划",
+      "evidence": "明庭厨卫号客资成本低，但单账号跑量接近上限",
+      "recommendation": "新增“苏州旧改观察号”，复用施工前后对比素材",
+      "expected": "扩大同类客资来源",
+      "risk": "低",
+      "tone": "good",
+      "buttons": [
+        "新增账号",
+        "查看原因"
+      ]
+    },
+    {
+      "time": "昨日 14:20",
+      "status": "未处理",
+      "type": "发布提醒",
+      "target": "整装报价-C1",
+      "evidence": "组合已生成但视频仍未发布，计划无法进入投流",
+      "recommendation": "优先发布全屋报价图文 v3 对应视频，等待审核通过后启动投流",
+      "expected": "恢复整装报价测试节奏",
+      "risk": "中",
+      "tone": "warn",
+      "buttons": [
+        "发布视频",
+        "暂缓"
+      ]
+    },
+    {
+      "time": "前日 19:10",
+      "status": "观察中",
+      "type": "素材复盘",
+      "target": "全屋报价图文 v3",
+      "evidence": "同素材在设计师号有客资，在浦东门店号低流量",
+      "recommendation": "保留设计师号组合，停止浦东门店号复投该素材",
+      "expected": "减少错误组合复投",
+      "risk": "中",
+      "tone": "warn",
+      "buttons": [
+        "查看记录",
+        "加入复盘"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "title": "高端设计组合空耗",
+      "text": "消耗 ¥332 暂无客资，建议暂停",
+      "status": "高风险",
+      "tone": "bad"
+    },
+    {
+      "title": "整装报价素材疲劳",
+      "text": "同素材三次投放后成本抬升",
+      "status": "中风险",
+      "tone": "warn"
+    },
+    {
+      "title": "账号余额可投天数不足",
+      "text": "按今日消耗预计可投 6.5 天",
+      "status": "提醒",
+      "tone": "warn"
+    },
+    {
+      "title": "优质素材库存偏少",
+      "text": "老房翻新可复投素材仅 2 条",
+      "status": "提醒",
+      "tone": "warn"
+    },
+    {
+      "title": "视频审核阻塞",
+      "text": "整装报价-C1 仍处于视频审核中",
+      "status": "中风险",
+      "tone": "warn"
+    },
+    {
+      "title": "账号跑量分化",
+      "text": "华府高端案例号近2次投放均无客资",
+      "status": "高风险",
+      "tone": "bad"
+    }
+  ],
+  "accountRecommendations": [
+    {
+      "name": "星辰老房翻新号",
+      "bestFor": "老房翻新 / 上海浦东",
+      "cost": "¥158",
+      "leadProfile": "中高预算老房业主",
+      "ai": "近7天流量稳定，适合继续扩量",
+      "status": "推荐扩量",
+      "tone": "good"
+    },
+    {
+      "name": "浦东门店号",
+      "bestFor": "报价咨询 / 到店转化",
+      "cost": "¥143",
+      "leadProfile": "价格敏感但咨询明确",
+      "ai": "更适合搭配报价口播",
+      "status": "稳定",
+      "tone": "good"
+    },
+    {
+      "name": "设计师阿林",
+      "bestFor": "整装报价 / 设计需求",
+      "cost": "¥206",
+      "leadProfile": "预算待确认用户",
+      "ai": "需换素材再判断",
+      "status": "观察",
+      "tone": "warn"
+    },
+    {
+      "name": "华府高端案例号",
+      "bestFor": "高端案例曝光",
+      "cost": "-",
+      "leadProfile": "浏览多提交少",
+      "ai": "当前不建议继续跑高端获客",
+      "status": "暂停建议",
+      "tone": "bad"
+    }
+  ],
+  "materialRecommendations": [
+    {
+      "name": "老房前后对比 v2.1",
+      "type": "视频",
+      "source": "素材平台同步",
+      "direction": "老房翻新",
+      "used": "5次投放",
+      "performance": "高流量2 / 稳定2 / 低流量1",
+      "bestCombo": "星辰老房翻新号 + 浦东",
+      "weakCombo": "设计师阿林 + 宝山",
+      "costRange": "¥148-236",
+      "leads": 32,
+      "recommendation": "建议复投",
+      "ai": "同素材在老房号表现好，在设计师号跑量弱，建议按账号复用",
+      "image": "/current-demo/assets/home-gallery-5.png",
+      "tone": "good"
+    },
+    {
+      "name": "报价避坑口播 v1.3",
+      "type": "视频",
+      "source": "素材平台同步",
+      "direction": "老房翻新",
+      "used": "3次投放",
+      "performance": "高流量1 / 稳定2 / 低流量0",
+      "bestCombo": "浦东门店号 + 徐汇",
+      "weakCombo": "-",
+      "costRange": "¥143-176",
+      "leads": 18,
+      "recommendation": "继续测试",
+      "ai": "报价类素材适合门店号，建议扩到浦东相邻区域",
+      "image": "/current-demo/assets/home-gallery-3.png",
+      "tone": "good"
+    },
+    {
+      "name": "全屋报价图文 v3",
+      "type": "图文",
+      "source": "第三方素材库",
+      "direction": "全屋整装",
+      "used": "4次投放",
+      "performance": "高流量1 / 稳定1 / 低流量2",
+      "bestCombo": "设计师阿林 + 闵行",
+      "weakCombo": "浦东门店号 + 宝山",
+      "costRange": "¥182-318",
+      "leads": 9,
+      "recommendation": "分场景复盘",
+      "ai": "不是素材本身停用，而是部分账号和区域组合不适配",
+      "image": "/current-demo/assets/home-gallery-4.png",
+      "tone": "warn"
+    },
+    {
+      "name": "设计师口播脚本 v1",
+      "type": "视频",
+      "source": "AI脚本生成",
+      "direction": "高端设计",
+      "used": "待投放",
+      "performance": "暂无投放数据",
+      "bestCombo": "待测试",
+      "weakCombo": "-",
+      "costRange": "参考 ¥260-330",
+      "leads": 0,
+      "recommendation": "加入测试",
+      "ai": "适合替换高端案例混剪，需先进入组合发布审核",
+      "image": "/current-demo/assets/home-gallery-6.png",
+      "tone": "blue"
+    }
+  ],
+  "leads": [
+    {
+      "id": "L-10231",
+      "source": "老房翻新-A1",
+      "city": "上海",
+      "area": "浦东新区",
+      "demand": "老房翻新",
+      "intent": "高意向",
+      "budget": "15-25万",
+      "house": "二手房 / 88㎡",
+      "distribution": "待分发",
+      "tone": "warn"
+    },
+    {
+      "id": "L-10232",
+      "source": "老房翻新-B1",
+      "city": "上海",
+      "area": "徐汇区",
+      "demand": "装修报价",
+      "intent": "中意向",
+      "budget": "10-18万",
+      "house": "老房 / 72㎡",
+      "distribution": "已分发",
+      "tone": "good"
+    },
+    {
+      "id": "L-10233",
+      "source": "厨卫局改-A1",
+      "city": "苏州",
+      "area": "姑苏区",
+      "demand": "厨卫改造",
+      "intent": "高意向",
+      "budget": "5-10万",
+      "house": "老房 / 62㎡",
+      "distribution": "分发成功",
+      "tone": "good"
+    },
+    {
+      "id": "L-10234",
+      "source": "整装报价-C1",
+      "city": "上海",
+      "area": "闵行区",
+      "demand": "全屋整装",
+      "intent": "中意向",
+      "budget": "预算待定",
+      "house": "新房 / 96㎡",
+      "distribution": "待分发",
+      "tone": "warn"
+    },
+    {
+      "id": "L-10235",
+      "source": "高端设计-D1",
+      "city": "北京",
+      "area": "朝阳区",
+      "demand": "高端设计",
+      "intent": "低意向",
+      "budget": "预算不明",
+      "house": "大平层 / 142㎡",
+      "distribution": "暂不分发",
+      "tone": "bad"
+    }
+  ],
+  "distributions": [
+    {
+      "lead": "L-10231",
+      "city": "上海 / 浦东",
+      "demand": "老房翻新",
+      "recommended": "上海星辰装饰",
+      "reason": "浦东老房翻新承接强，今日容量充足",
+      "status": "待确认",
+      "action": "确认分发",
+      "tone": "warn"
+    },
+    {
+      "lead": "L-10234",
+      "city": "上海 / 闵行",
+      "demand": "全屋整装",
+      "recommended": "上海晨光装饰",
+      "reason": "整装报价响应快，但需人工确认预算",
+      "status": "待复核",
+      "action": "人工复核",
+      "tone": "warn"
+    },
+    {
+      "lead": "L-10233",
+      "city": "苏州 / 姑苏",
+      "demand": "厨卫改造",
+      "recommended": "苏州明庭装饰",
+      "reason": "厨卫局改成交率高，服务区域匹配",
+      "status": "已分发",
+      "action": "查看反馈",
+      "tone": "good"
+    }
+  ],
+  "contractors": [
+    {
+      "name": "上海星辰装饰",
+      "city": "上海",
+      "business": "老房翻新 / 整装",
+      "area": "浦东 / 徐汇 / 闵行",
+      "assigned": 18,
+      "feedback": "82%",
+      "dealRate": "12.5%",
+      "status": "正常承接",
+      "tone": "good"
+    },
+    {
+      "name": "上海晨光装饰",
+      "city": "上海",
+      "business": "全屋整装 / 报价",
+      "area": "闵行 / 宝山",
+      "assigned": 9,
+      "feedback": "71%",
+      "dealRate": "9.8%",
+      "status": "正常承接",
+      "tone": "good"
+    },
+    {
+      "name": "苏州明庭装饰",
+      "city": "苏州",
+      "business": "厨卫改造",
+      "area": "姑苏 / 吴中",
+      "assigned": 11,
+      "feedback": "76%",
+      "dealRate": "10.8%",
+      "status": "正常承接",
+      "tone": "good"
+    },
+    {
+      "name": "北京华府装饰",
+      "city": "北京",
+      "business": "高端设计 / 大宅",
+      "area": "朝阳 / 海淀",
+      "assigned": 5,
+      "feedback": "48%",
+      "dealRate": "6.1%",
+      "status": "观察中",
+      "tone": "warn"
+    }
+  ],
+  "logs": [
+    {
+      "time": "10:30",
+      "operator": "AI",
+      "object": "高端设计-D1",
+      "advice": "暂停低效组合",
+      "action": "待确认",
+      "reason": "空耗无客资",
+      "result": "等待运营确认"
+    },
+    {
+      "time": "10:36",
+      "operator": "Admin",
+      "object": "老房翻新-A1",
+      "advice": "建议扩量",
+      "action": "已确认",
+      "reason": "成本稳定",
+      "result": "预算占比提升至50%"
+    },
+    {
+      "time": "10:45",
+      "operator": "AI",
+      "object": "全屋报价图文 v3",
+      "advice": "复盘低流量组合",
+      "action": "待确认",
+      "reason": "部分账号复投后成本上升",
+      "result": "等待换素材"
+    }
+  ]
+}
