@@ -10,17 +10,19 @@ export function Button({
   variant = 'primary',
   onClick,
   disabled,
-  className = ''
+  className = '',
+  ariaLabel
 }: {
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'mini' | 'dangerLite';
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
+  ariaLabel?: string;
 }) {
   const base = variant === 'primary' ? 'btn' : variant === 'secondary' ? 'btn secondary' : variant === 'dangerLite' ? 'mini-btn danger-lite' : 'mini-btn';
   return (
-    <button className={`${base} ${className}`} disabled={disabled} onClick={onClick} type='button'>
+    <button aria-label={ariaLabel} className={`${base} ${className}`} disabled={disabled} onClick={onClick} type='button'>
       {children}
     </button>
   );

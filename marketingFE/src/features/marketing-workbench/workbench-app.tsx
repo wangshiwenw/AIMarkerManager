@@ -73,95 +73,111 @@ function CockpitView() {
   }
 
   return (
-    <div className='dashboard cockpit operator-cockpit'>
-      <div className='dashboard-toolbar'>
-        <div className='desk-pulse'>AI巡检运行中 · {demoData.operator.lastInspection} 已更新 · 下一次 {demoData.operator.nextInspection}</div>
-        <div className='date-controls'>
-          <span>数据时间：{demoData.cockpit.date}</span>
-          <Tag tone='blue'>{demoData.operator.availableDays}</Tag>
-        </div>
+    <div className='dashboard cockpit cockpit-v2 operator-cockpit'>
+      <div className='cockpit-v2-top'>
+        <div className='cockpit-data-time'>ⓘ 数据更新至：<b>{demoData.cockpit.date} {demoData.operator.lastInspection}:00</b></div>
+        <div className='desk-pulse'>AI巡检中 · 下次 {demoData.operator.nextInspection}</div>
       </div>
-      <section className='dash-metrics'>
-        {demoData.cockpit.metrics.map((item) => (
-          <div className={`dash-metric dash-${item.tone}`} key={item.label}>
-            <label>{item.label}</label>
-            <span className='dash-icon'>{item.icon}</span>
-            <b>{item.value}</b>
-            <div className='metric-bottom'>
-              <span>{item.trend}</span>
-              {'series' in item && item.series ? <Sparkline color={toneColor(item.tone)} values={item.series} /> : null}
-              {'progress' in item && item.progress ? <div className='bar'><i style={{ '--w': `${item.progress}%` } as React.CSSProperties} /></div> : null}
+
+      <div className='cockpit-v2-layout'>
+        <div className='cockpit-v2-main'>
+          <section className='cockpit-summary-row'>
+            <div className='cockpit-summary-title'>
+              <b>投放总览</b>
+              <div className='time-tabs'>
+                {['今日', '昨日', '近7天', '近30天'].map((name, index) => <button className={index === 0 ? 'active' : ''} key={name} onClick={() => notify(`${name}已记录`)} type='button'>{name}</button>)}
+                <span />
+                <button onClick={() => notify('自定义日期已记录')} type='button'>自定义 📅</button>
+              </div>
             </div>
-          </div>
-        ))}
-      </section>
-      <section className='cockpit-business-filter'>
-        <span>业务筛选</span>
-        {demoData.cockpit.filters.map((name, index) => (
-          <button className={index === 0 ? 'active' : ''} key={name} onClick={() => notify(`${name}已记录`)} type='button'>{name}</button>
-        ))}
-      </section>
-      <section className='cockpit-grid'>
-        <aside className='cockpit-right'>
-          <div className='card card-pad dash-card scroll-card'>
-            <div className='dash-head'><h3>AI待处理建议</h3><Tag tone='good'>{demoData.operator.pendingActions} 条未关闭</Tag></div>
-            <div className='cockpit-side-list'>
-              {demoData.aiActions.map((item, index) => (
-                <div className={`cockpit-side-item ${item.tone}`} key={item.recommendation}>
-                  <span className={`index-badge ${item.tone}`}>{index + 1}</span>
-                  <div>
-                    <div className='advice-meta'><span>{item.time}</span><Tag tone={item.status === '未处理' ? 'bad' : item.status === '观察中' ? 'warn' : 'blue'}>{item.status}</Tag></div>
-                    <b>{item.recommendation}</b>
-                    <p>{item.evidence}</p>
-                  </div>
-                  <div className='advice-actions'>
-                    <Button onClick={() => notify('忽略建议已记录')} variant='mini'>忽略</Button>
-                    <Button className='confirm' onClick={() => notify(`${item.buttons[0]}已记录`)} variant='mini'>{item.buttons[0]}</Button>
+            <div className='dash-metrics'>
+              {demoData.cockpit.metrics.slice(0, 4).map((item) => (
+                <div className={`dash-metric dash-${item.tone}`} key={item.label}>
+                  <label>{item.label === '今日客资' ? '有效线索量' : item.label === '平均客资成本' ? 'ROI' : item.label}</label>
+                  <span className='dash-icon'>{item.icon}</span>
+                  <b>{item.label === '今日客资' ? '482 条' : item.label === '平均客资成本' ? '3.2' : item.label === '当前在投组合' ? '8 个' : '¥12,560.80'}</b>
+                  <div className='metric-bottom'>
+                    <span>{item.label === '今日客资' ? '较昨日 ↑12.4%' : item.label === '平均客资成本' ? '较昨日 ↑0.4' : item.label === '当前在投组合' ? '2 个监控中' : '较昨日 ↑8.2%'}</span>
+                    {'series' in item && item.series ? <Sparkline color={toneColor(item.tone)} values={item.series} /> : null}
+                    {'progress' in item && item.progress ? <div className='bar'><i style={{ '--w': `${item.progress}%` } as React.CSSProperties} /></div> : null}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-          <div className='card card-pad dash-card risk-card scroll-card'>
-            <div className='dash-head'><h3>风险预警</h3><Tag tone='bad'>{demoData.operator.risks} 项风险</Tag></div>
-            <div className='cockpit-side-list'>
-              {demoData.risks.map((item) => (
-                <div className={`cockpit-risk-item ${item.tone}`} key={item.title}>
-                  <div><b>{item.title}</b><p>{item.text}</p></div>
-                  <Tag tone={item.tone}>{item.status}</Tag>
+          </section>
+
+          <section className='card card-pad cockpit-main-card'>
+            <div className='cockpit-chart-head'>
+              <div><h3>投放表现趋势图</h3><div className='legend'><i className='blue' />消耗<i className='green' />客资<i className='purple' />客资成本<i className='line' />参考成本</div></div>
+              <div className='cockpit-controls'>
+                <div className='segmented'>{['汇总', '按计划', '按账号', '按素材'].map((item) => <button className={dashFilter === item ? 'active' : ''} key={item} onClick={() => switchFilter(item)} type='button'>{item}</button>)}</div>
+                <Button onClick={() => notify('多指标对比已记录')}>多指标对比</Button>
+                <div className='segmented compact'>{['按小时', '按天'].map((item) => <button className={dashGrain === item ? 'active' : ''} key={item} onClick={() => setDashGrain(item)} type='button'>{item}</button>)}</div>
+              </div>
+            </div>
+            {dashFilter !== '汇总' ? <div className='entity-selector'>{entityOptions.map((option) => <button className={entity === option ? 'active' : ''} key={option} onClick={() => setEntity(option)} type='button'>{option}</button>)}</div> : null}
+            <div className='scope-summary'><span>当前：{dashFilter}</span><b>{entity}</b><em>消耗 ¥2,860</em><em>客资 16 条</em><em>成本 ¥179/条</em><em>4 个组合</em></div>
+            <CockpitChart combos={filteredCombos} grain={dashGrain} />
+          </section>
+
+          <section className='card cockpit-plan-table-card'>
+            <div className='cockpit-table-head'>
+              <div><h3>投放计划列表</h3><div className='cockpit-tabs'><button className='active' type='button'>全部计划 (18)</button><button type='button'>投放中 (9)</button><button type='button'>已暂停 (6)</button><button type='button'>已完成 (3)</button></div></div>
+              <div className='table-tools'><Button onClick={() => notify('批量操作已记录')} variant='mini'>批量操作</Button><Button onClick={() => notify('自定义列已记录')} variant='mini'>自定义列</Button><Button onClick={() => notify('过滤器已记录')} variant='mini'>过滤器</Button><input aria-label='搜索计划名称或ID' placeholder='搜索计划名称/ID' /></div>
+            </div>
+            <div className='plan-table-wrap'>
+              <table className='cockpit-plan-table'>
+                <thead><tr><th aria-label='选择计划' /><th>计划信息</th><th>状态</th><th>消耗(元)</th><th>曝光量</th><th>点击率</th><th>线索成本(元)</th><th>线索量</th><th>操作</th></tr></thead>
+                <tbody>
+                  {demoData.plans.slice(0, 4).map((plan, index) => (
+                    <tr key={plan.id}>
+                      <td><label className='row-check'><input aria-label={`选择计划：${plan.name}`} type='checkbox' /><span>选择{plan.name}</span></label></td>
+                      <td><div className='plan-cell'><span aria-label='计划图标' className={`plan-avatar ${plan.tone}`} role='img'>⌂</span><div><b>{plan.name.replace('6月获客计划', '案例')}</b><small>ID: PL-2025052{index + 1}00{index + 1}</small></div></div></td>
+                      <td><span aria-hidden='true' className={`status-dot ${plan.tone}`} />{plan.status}</td>
+                      <td>{plan.spent.replace('¥', '')}</td>
+                      <td>{['56.2w', '42.1w', '18.6w', '2.1w'][index]}</td>
+                      <td>{['5.67%', '4.32%', '3.18%', '0.42%'][index]}</td>
+                      <td>{plan.cost.replace('¥', '').replace('/条', '')} <Tag tone={index < 2 ? 'blue' : plan.tone}>{index < 2 ? '优秀' : plan.status}</Tag></td>
+                      <td>{plan.leads}</td>
+                      <td><div className='table-actions'><button aria-label={`查看数据：${plan.name}`} className='mini-btn' onClick={() => notify('数据已记录')} type='button'>数据</button><button aria-label={`加投：${plan.name}`} className='mini-btn' onClick={() => notify('加投已记录')} type='button'>加投</button><button aria-label={`更多操作：${plan.name}`} className='mini-btn' onClick={() => notify('更多已记录')} type='button'>•••</button></div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <aside className='cockpit-v2-aside'>
+          <section className='card card-pad ai-side-card'>
+            <div className='dash-head'><h3>AI 操盘建议</h3><button onClick={() => notify('查看全部已记录')} type='button'>查看全部 ›</button></div>
+            <div className='hero-advice'>
+              <span className='ai-orb' />
+              <div><h4>建议加投</h4><b>现代简约风 | 老房翻新案例 <Tag tone='good'>表现优异</Tag></b><small>计划ID: PL-202505201001</small></div>
+              <div className='hero-advice-stats'><span>点击率 <b>5.67%</b></span><span>线索成本 <b>23.18 元</b></span><span>转化率 <b>3.21%</b></span></div>
+              <div className='hero-advice-foot'><strong>建议加投：300-500元</strong><Button onClick={() => notify('立即加投已记录')}>立即加投</Button></div>
+            </div>
+            <div className='side-advice-list'>
+              {demoData.aiActions.slice(1, 3).map((item) => <button className={`side-advice-row ${item.tone}`} key={item.recommendation} onClick={() => notify(`${item.type}已记录`)} type='button'><span>{item.tone === 'bad' ? 'Ⅱ' : '↔'}</span><b>{item.type}</b><em>{item.target}</em></button>)}
+            </div>
+          </section>
+
+          <section className='card card-pad hot-card'>
+            <div className='dash-head'><h3>爆品雷达</h3><button onClick={() => notify('更多爆款已记录')} type='button'>更多爆款 ›</button></div>
+            <div className='hot-tabs'><button className='active' type='button'>同行爆款</button><button type='button'>同城爆款</button><button type='button'>近期上升</button></div>
+            <div className='hot-list'>
+              {demoData.materialRecommendations.slice(0, 3).map((item, index) => (
+                <div className='hot-item' key={item.name}>
+                  <div className='hot-thumb'><Image alt={item.name} height={70} src={item.image} width={78} /><span>🔥 TOP{index + 1}</span></div>
+                  <div><b>{['她家125m新中式装修，全屋花了28万太值了！', '上海夫妇的法式奶油风，全屋通铺木显大了！', '90后夫妻的极简之家，客厅无主灯太高级了！'][index]}</b><small>{item.source}</small><p>播放量 {['86.7w', '72.3w', '65.4w'][index]}　点赞 {['2.1w', '1.6w', '1.2w'][index]}　线索量 {item.leads * 10 + index}</p></div>
+                  <Button onClick={() => notify('跟投已记录')} variant='mini'>跟投</Button>
                 </div>
               ))}
             </div>
-          </div>
+            <button className='change-batch' onClick={() => notify('换一批已记录')} type='button'>⟳ 换一批</button>
+          </section>
         </aside>
-        <div className='card card-pad cockpit-main-card'>
-          <div className='cockpit-chart-head'>
-            <div><h3>投放表现主图</h3><div className='legend'><i className='blue' />消耗<i className='green' />客资<i className='purple' />客资成本<i className='line' />参考成本</div></div>
-            <div className='cockpit-controls'>
-              <div className='segmented'>{['汇总', '按计划', '按账号', '按素材', '按获客方向'].map((item) => <button className={dashFilter === item ? 'active' : ''} key={item} onClick={() => switchFilter(item)} type='button'>{item}</button>)}</div>
-              <Button onClick={() => notify('多指标对比已记录')}>多指标对比</Button>
-              <div className='segmented compact'>{['按小时', '按天'].map((item) => <button className={dashGrain === item ? 'active' : ''} key={item} onClick={() => setDashGrain(item)} type='button'>{item}</button>)}</div>
-            </div>
-          </div>
-          {dashFilter !== '汇总' ? <div className='entity-selector'>{entityOptions.map((option) => <button className={entity === option ? 'active' : ''} key={option} onClick={() => setEntity(option)} type='button'>{option}</button>)}</div> : null}
-          <CockpitChart combos={filteredCombos} grain={dashGrain} />
-        </div>
-        <div className='cockpit-bottom'>
-          <div className='card card-pad cockpit-list-card'>
-            <div className='table-title'>正在监控的投放组合（{demoData.combinations.length}）</div>
-            <div className='combo-watch-list'>
-              {demoData.combinations.map((item) => (
-                <div className={`combo-watch-item ${item.tone}`} key={item.name}>
-                  <div className='combo-watch-main'><b>{item.name}</b><span>{item.account}</span><em>{item.material}</em></div>
-                  <div className='combo-watch-metrics'><div><span>今日消耗</span><strong>{item.spend}</strong></div><div><span>客资</span><strong>{item.leads}条</strong></div><div><span>客资成本</span><strong>{item.cost}</strong></div></div>
-                  <div className='combo-watch-state'><Tag tone={item.tone}>{item.publishStatus}</Tag><Tag tone={item.tone}>{item.ai}</Tag></div>
-                  <div className='combo-watch-actions'><Button onClick={() => notify(`${item.action}已记录`)} variant='mini'>{item.action}</Button><Button onClick={() => notify('查看诊断已记录')} variant='mini'>查看诊断</Button></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

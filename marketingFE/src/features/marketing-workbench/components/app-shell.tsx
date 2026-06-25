@@ -60,14 +60,14 @@ export function AppShell({
     <ToastContext.Provider value={contextValue}>
       <div className='app-shell'>
         <aside className='sidebar'>
-          <div className='brand'>
+          <Link className='brand' href='/home'>
             <div className='brand-logo'>
               <Image src='/current-demo/assets/zhuketong-logo.png' alt='筑客通' width={26} height={26} />
             </div>
             <div>
-              <h1>筑客通 AI市场经理</h1>
+              <h1>{demoData.productName}</h1>
             </div>
-          </div>
+          </Link>
           <nav className='nav'>
             {demoData.nav.map((item) => (
               <Link className={`nav-btn ${item.id === activePage ? 'active' : ''}`} href={demoRoutes[item.id as DemoPage]} key={item.id}>

@@ -32,7 +32,9 @@ body { margin: 0; overflow: hidden; font-family: ui-sans-serif, system-ui, -appl
 .landing-cta { width: 240px; height: 68px; border-radius: 13px; font-size: 24px; }
 .app-shell { height: 100vh; display: grid; grid-template-columns: 194px minmax(0, 1fr); background: linear-gradient(180deg, #07111F, #0B1220); }
 .sidebar { border-right: 1px solid rgba(148,163,184,.16); background: linear-gradient(180deg, rgba(7,17,31,.96), rgba(7,17,31,.84)); padding: 22px 12px; display: flex; flex-direction: column; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 28px; border-bottom: 0; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 28px; border-bottom: 0; color: #F8FAFC; text-decoration: none; border-radius: 12px; transition: .16s ease; }
+.brand:hover { color: #F8FAFC; filter: brightness(1.08); }
+.brand:focus-visible { outline: 2px solid rgba(24,211,158,.78); outline-offset: 3px; }
 .brand-logo, .avatar { display: grid; place-items: center; background: rgba(24,211,158,.14); color: #18D39E; font-weight: 800; }
 .brand-logo { width: 36px; height: 36px; border-radius: 12px; padding: 5px; font-size: 16px; background: rgba(2,6,23,.42); box-shadow: inset 0 0 0 1px rgba(24,211,158,.16); overflow: hidden; }
 .brand-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -427,6 +429,96 @@ tbody tr:hover { background: rgba(56,189,248,.06); }
 .cockpit-risk-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border: 1px solid rgba(148,163,184,.13); border-radius: 10px; background: rgba(2,6,23,.25); padding: 6px 8px; }
 .cockpit-risk-item.bad { border-color: rgba(239,68,68,.22); background: rgba(239,68,68,.06); }
 .cockpit-risk-item.warn { border-color: rgba(245,158,11,.20); }
+.cockpit-v2 { min-width: 1360px; gap: 12px; }
+.cockpit-v2-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 30px; margin-top: -2px; }
+.cockpit-data-time { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 18px; border: 1px solid rgba(129,140,248,.28); border-radius: 999px; background: rgba(15,23,42,.46); color: #AAB8D7; font-size: 13px; font-weight: 850; box-shadow: inset 0 0 20px rgba(129,140,248,.05); }
+.cockpit-data-time b { color: #E8EDFF; letter-spacing: .04em; }
+.cockpit-v2 .desk-pulse { min-height: 34px; padding: 0 18px; border-color: rgba(24,211,158,.30); background: rgba(24,211,158,.12); color: #62F2C6; }
+.cockpit-v2-layout { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 14px; align-items: start; }
+.cockpit-v2-main { display: grid; gap: 14px; min-width: 0; }
+.cockpit-summary-row { display: grid; gap: 10px; }
+.cockpit-summary-title { display: flex; align-items: center; gap: 18px; min-height: 34px; }
+.cockpit-summary-title > b { color: #F8FAFC; font-size: 16px; font-weight: 950; white-space: nowrap; }
+.time-tabs { display: inline-flex; align-items: center; gap: 6px; padding: 4px; border: 1px solid rgba(148,163,184,.16); border-radius: 12px; background: rgba(15,23,42,.55); }
+.time-tabs button { min-height: 30px; padding: 0 16px; border-radius: 10px; color: #B6C2DB; font-size: 13px; font-weight: 900; }
+.time-tabs button.active { background: linear-gradient(135deg, #7C72FF, #A78BFA); color: #FFFFFF; box-shadow: 0 12px 28px rgba(124,114,255,.24); }
+.time-tabs span { width: 1px; height: 18px; background: rgba(148,163,184,.22); }
+.cockpit-v2 .dash-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.cockpit-v2 .dash-metric { min-height: 94px; border-color: rgba(83,111,170,.46); border-radius: 13px; background: radial-gradient(circle at 72% 0%, rgba(129,140,248,.26), transparent 36%), linear-gradient(160deg, rgba(25,37,68,.94), rgba(12,21,40,.96)); box-shadow: 0 18px 44px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.05); }
+.cockpit-v2 .dash-metric.dash-good { background: radial-gradient(circle at 78% 0%, rgba(24,211,158,.24), transparent 36%), linear-gradient(160deg, rgba(22,48,61,.94), rgba(12,21,40,.96)); }
+.cockpit-v2 .dash-metric b { margin-top: 9px; font-size: 25px; line-height: .98; }
+.cockpit-v2 .dash-metric label { color: #B4C1D9; font-weight: 850; }
+.cockpit-v2 .dash-icon { display: none; }
+.cockpit-v2 .sparkline { width: 86px; height: 26px; right: 14px; bottom: 22px; }
+.cockpit-v2 .metric-bottom span { max-width: 142px; font-size: 12px; }
+.cockpit-v2 .cockpit-main-card { min-height: 558px; padding: 18px 18px 14px; border-color: rgba(96,105,190,.36); border-radius: 14px; background: linear-gradient(160deg, rgba(29,32,64,.96), rgba(14,20,40,.96)); }
+.cockpit-v2 .cockpit-chart-head { align-items: center; margin-bottom: 12px; }
+.cockpit-v2 .cockpit-chart-head h3 { position: relative; padding-left: 14px; font-size: 18px; }
+.cockpit-v2 .cockpit-chart-head h3::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 999px; background: #7C72FF; box-shadow: 0 0 18px rgba(124,114,255,.60); }
+.cockpit-v2 .segmented { border-color: rgba(129,140,248,.16); background: rgba(7,12,29,.58); }
+.cockpit-v2 .segmented button.active,
+.cockpit-v2 .btn { color: #FFFFFF; background: linear-gradient(135deg, #7C72FF, #8B7CFF); box-shadow: 0 12px 28px rgba(124,114,255,.22); }
+.cockpit-v2 .scope-summary { margin: 4px 0 10px; }
+.cockpit-v2 .cockpit-chart { height: 424px; border-color: rgba(148,163,184,.14); border-radius: 12px; background: radial-gradient(circle at 50% 10%, rgba(47,123,255,.12), transparent 42%), rgba(7,13,29,.62); }
+.cockpit-plan-table-card { overflow: hidden; border-color: rgba(96,105,190,.34); border-radius: 14px; background: linear-gradient(160deg, rgba(29,32,64,.95), rgba(14,20,40,.96)); }
+.cockpit-table-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 18px 18px 0; border-bottom: 1px solid rgba(148,163,184,.12); }
+.cockpit-table-head h3 { position: relative; margin: 0 0 12px; padding-left: 14px; color: #F8FAFC; font-size: 18px; font-weight: 950; }
+.cockpit-table-head h3::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 999px; background: #7C72FF; }
+.cockpit-table-head .cockpit-tabs { height: 38px; padding: 0; border: 0; background: transparent; }
+.cockpit-table-head .cockpit-tabs button { font-size: 14px; }
+.table-tools { display: flex; align-items: center; gap: 8px; padding-bottom: 10px; }
+.table-tools input { width: 210px; height: 34px; border: 1px solid rgba(148,163,184,.16); border-radius: 10px; background: rgba(7,12,29,.52); color: #F8FAFC; padding: 0 12px; font-size: 12px; }
+.plan-table-wrap { overflow: auto; }
+.cockpit-plan-table { width: 100%; min-width: 1080px; border-collapse: collapse; font-size: 13px; }
+.cockpit-plan-table th { height: 42px; padding: 0 14px; color: #7E8CA8; text-align: left; font-size: 12px; font-weight: 900; background: rgba(10,15,32,.28); }
+.cockpit-plan-table td { padding: 10px 14px; border-top: 1px solid rgba(148,163,184,.10); color: #F8FAFC; font-weight: 850; white-space: nowrap; }
+.cockpit-plan-table td small { display: block; margin-top: 3px; color: #7E8CA8; font-size: 11px; font-weight: 750; }
+.row-check { display: inline-flex; align-items: center; }
+.row-check span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.plan-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.plan-avatar { width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; color: #FFFFFF; background: linear-gradient(135deg, #B56A3A, #D3934B); }
+.plan-avatar.good { background: linear-gradient(135deg, #B56A3A, #D3934B); }
+.plan-avatar.warn { background: linear-gradient(135deg, #B59735, #D6B64D); }
+.plan-avatar.blue { background: linear-gradient(135deg, #18A673, #4ADE80); }
+.plan-avatar.bad { background: linear-gradient(135deg, #7C3AED, #EF4444); }
+.status-dot { width: 10px; height: 10px; display: inline-block; margin-right: 7px; border-radius: 50%; background: #38BDF8; }
+.status-dot.good { background: #34D399; }
+.status-dot.warn { background: #FBBF24; }
+.status-dot.bad { background: #F87171; }
+.table-actions { display: flex; align-items: center; gap: 7px; }
+.cockpit-v2-aside { display: grid; gap: 14px; min-width: 0; }
+.ai-side-card,
+.hot-card { border-color: rgba(96,105,190,.38); border-radius: 15px; background: linear-gradient(160deg, rgba(28,31,65,.98), rgba(15,22,43,.96)); box-shadow: 0 18px 50px rgba(0,0,0,.24); }
+.ai-side-card .dash-head button,
+.hot-card .dash-head button { color: #C4B5FD; font-size: 12px; font-weight: 900; }
+.hero-advice { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 14px; padding: 18px 14px 14px; border: 1px solid rgba(124,114,255,.44); border-radius: 15px; background: radial-gradient(circle at 18% 20%, rgba(124,114,255,.26), transparent 26%), rgba(24,28,64,.70); }
+.ai-orb { width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(circle, #F8FAFC 0 10%, #8B5CF6 11% 24%, #0F172A 25% 43%, #030712 44%); box-shadow: 0 0 28px rgba(124,114,255,.48); }
+.hero-advice h4 { margin: 0 0 6px; color: #C4B5FD; font-size: 17px; font-weight: 950; }
+.hero-advice b { display: block; color: #F8FAFC; font-size: 13px; line-height: 1.5; }
+.hero-advice small { display: block; margin-top: 4px; color: #8EA0C3; font-size: 11px; font-weight: 750; }
+.hero-advice-stats { grid-column: 1 / -1; display: grid; gap: 8px; margin-top: 4px; }
+.hero-advice-stats span { display: flex; justify-content: space-between; color: #C8D2E6; font-size: 13px; font-weight: 850; }
+.hero-advice-stats b { display: inline; color: #23E6B5; font-size: 14px; }
+.hero-advice-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.hero-advice-foot strong { color: #C4B5FD; font-size: 17px; font-weight: 1000; }
+.side-advice-list { display: grid; gap: 10px; margin-top: 10px; }
+.side-advice-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 54px; padding: 0 12px; border: 1px solid rgba(148,163,184,.13); border-radius: 12px; background: rgba(7,12,29,.38); color: #F8FAFC; text-align: left; }
+.side-advice-row span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: rgba(124,114,255,.28); color: #C4B5FD; font-weight: 950; }
+.side-advice-row.bad span { background: rgba(239,68,68,.24); color: #FCA5A5; }
+.side-advice-row b { color: #F8FAFC; font-size: 13px; }
+.side-advice-row em { color: #8EA0C3; font-size: 12px; font-style: normal; }
+.hot-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.hot-tabs button { min-height: 32px; border-radius: 999px; color: #B6C2DB; font-size: 12px; font-weight: 900; }
+.hot-tabs button.active { color: #FFFFFF; background: linear-gradient(135deg, #7C72FF, #8B7CFF); }
+.hot-list { display: grid; gap: 14px; }
+.hot-item { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.hot-thumb { position: relative; width: 78px; height: 78px; overflow: hidden; border-radius: 10px; background: #334155; }
+.hot-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.hot-thumb span { position: absolute; left: 0; top: 0; padding: 4px 7px; border-radius: 0 0 9px 0; background: linear-gradient(135deg, #FF4D3D, #FBBF24); color: #FFFFFF; font-size: 10px; font-weight: 1000; }
+.hot-item b { display: block; color: #F8FAFC; font-size: 12px; line-height: 1.35; }
+.hot-item small { display: block; margin-top: 8px; color: #8EA0C3; font-size: 11px; font-weight: 800; }
+.hot-item p { margin: 5px 0 0; color: #C8D2E6; font-size: 10px; font-weight: 800; }
+.change-batch { width: 100%; min-height: 38px; margin-top: 12px; border-top: 1px solid rgba(148,163,184,.12); color: #D8DEEF; font-size: 13px; font-weight: 900; }
 .history-summary { display: grid; gap: 7px; }
 .history-summary div { display: grid; grid-template-columns: 82px 1fr auto; align-items: center; gap: 8px; border: 1px solid rgba(148,163,184,.13); border-radius: 10px; background: rgba(2,6,23,.24); padding: 8px 9px; }
 .history-summary div.good { border-color: rgba(34,197,94,.22); background: rgba(34,197,94,.07); }
