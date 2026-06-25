@@ -17,11 +17,29 @@ window.DEMO_DATA = {
   nav: [
     { id: 'home', label: '操盘纵览', icon: '⌂' },
     { id: 'acquisition', label: '投放计划', icon: '▤' },
+    { id: 'auth', label: '授权管理', icon: '◇' },
     { id: 'materials', label: '素材库', icon: '▧' },
-    { id: 'leads', label: '客资池', icon: '▦' },
+    { id: 'leads', label: '线索管理', icon: '▦' },
     { id: 'distribution', label: '线索分发', icon: '⇄' },
     { id: 'companies', label: '装企承接', icon: '▣' }
   ],
+  giantAuth: {
+    status: 'unbound',
+    accountName: '上海星辰装饰巨量引擎主账户',
+    accountId: 'AD-1098-5623-2048',
+    subject: '上海星辰装饰工程有限公司',
+    authorizedAt: '2026-06-18 14:22',
+    expiresAt: '2027-06-18 14:22',
+    balance: '¥18,600',
+    availableAccountCount: 3,
+    lastSyncAt: '2026-06-24 10:30',
+    accounts: [
+      { name: '星辰老房翻新号', platform: '巨量引擎', type: '抖音号', authStatus: '已授权', deliveryStatus: '可投放', syncedAt: '2026-06-24 10:30', tone: 'good', reason: '账户余额充足，投放权限正常' },
+      { name: '浦东门店号', platform: '巨量引擎', type: '抖音号', authStatus: '已授权', deliveryStatus: '可投放', syncedAt: '2026-06-24 10:30', tone: 'good', reason: '可用于报价咨询和门店转化计划' },
+      { name: '设计师阿林', platform: '巨量引擎', type: '抖音号', authStatus: '已授权', deliveryStatus: '可投放', syncedAt: '2026-06-24 10:28', tone: 'good', reason: '可用于整装报价和设计需求测试' },
+      { name: '华府高端案例号', platform: '巨量引擎', type: '抖音号', authStatus: '已授权', deliveryStatus: '暂停投放', syncedAt: '2026-06-24 10:25', tone: 'warn', reason: '近两次高端设计计划转化偏弱，建议复核后再投放' }
+    ]
+  },
   cockpit: {
     date: '2026-06-23',
     metrics: [

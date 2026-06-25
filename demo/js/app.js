@@ -12,6 +12,7 @@
   const publishAuditTimers = new Map();
   let aiLoaderTimer = null;
   let aiLoaderTextTimer = null;
+  let authFlowTimer = null;
 
   const state = {
     page: 'home',
@@ -26,12 +27,18 @@
     createStage: 'input',
     createPublish: initialPublishCombos(),
     createComboSerial: 4,
-    pendingPlan: null
+    pendingPlan: null,
+    authModal: null
   };
 
   function clearPublishAuditTimers() {
     publishAuditTimers.forEach(timer => clearTimeout(timer));
     publishAuditTimers.clear();
+  }
+
+  function clearAuthFlowTimer() {
+    clearTimeout(authFlowTimer);
+    authFlowTimer = null;
   }
 
   function scheduleAuditPass(index, delay = 900) {
@@ -217,11 +224,15 @@
   function updateTopbar() {
     const o = data.operator;
     $('#pageTitle').textContent = data.nav.find(item => item.id === state.page)?.label || '操盘纵览';
+    const auth = data.giantAuth;
+    const authTone = auth.status === 'authorized' ? 'good' : ['expired', 'error', 'authFailed', 'syncFailed'].includes(auth.status) ? 'bad' : ['authorizing', 'confirm', 'syncing'].includes(auth.status) ? 'blue' : 'warn';
+    const authLabel = auth.status === 'authorized' ? o.giantStatus : auth.status === 'unbound' ? '巨量未授权' : auth.status === 'authorizing' ? '授权中' : auth.status === 'confirm' ? '待确认绑定' : auth.status === 'syncing' ? '同步中' : '授权异常';
+    const accountReady = auth.status === 'authorized' ? `可投账号 ${auth.accounts.filter(item => item.deliveryStatus === '可投放').length}/${auth.accounts.length}` : '可投账号 0/0';
     $('.top-status').innerHTML = `
       <span class="tag good">${o.platform}</span>
-      <span class="tag good">${o.giantStatus}</span>
-      <span class="tag good">${o.accountReady}</span>
-      <span class="tag blue">余额 ${o.balance}</span>
+      <span class="tag ${authTone}">${authLabel}</span>
+      <span class="tag ${auth.status === 'authorized' ? 'good' : 'warn'}">${accountReady}</span>
+      <span class="tag blue">余额 ${auth.status === 'authorized' ? auth.balance : '-'}</span>
       <div class="user-menu">
         <div class="avatar">A</div>
         <div class="user-copy"><b>${o.name}</b><span>${o.role}</span></div>
@@ -303,6 +314,77 @@
     const leads = picked.rows.reduce((sum, row) => sum + Number(row.leads || 0), 0);
     const cost = leads ? Math.round(spend / leads) : 0;
     return { ...picked, spend, leads, cost, comboCount: picked.rows.length };
+  }
+
+  function isGiantAuthReady() {
+    return data.giantAuth.status === 'authorized';
+  }
+
+  function authStatusMeta() {
+    const auth = data.giantAuth;
+    if (auth.status === 'authorized') {
+      return { label: '已授权', tone: 'good', title: '当前巨量引擎账号授权正常', desc: '系统已完成账户绑定，可同步可投放账号、账户余额和投放数据。' };
+    }
+    if (auth.status === 'authorizing') {
+      return { label: '授权跳转中', tone: 'blue', title: '正在跳转巨量引擎授权页面', desc: '系统已发起授权请求，请在巨量引擎授权页完成确认。' };
+    }
+    if (auth.status === 'confirm') {
+      return { label: '待确认绑定', tone: 'blue', title: '授权成功', desc: '已获取巨量引擎授权，请确认本次绑定账户信息。' };
+    }
+    if (auth.status === 'syncing') {
+      return { label: '同步中', tone: 'blue', title: '正在同步巨量引擎账号信息', desc: '系统正在同步账户基本信息、可投放账号和授权状态。' };
+    }
+    if (auth.status === 'authFailed') {
+      return { label: '授权失败', tone: 'bad', title: '授权失败', desc: '未能完成巨量引擎授权，请检查授权页状态后重新发起授权。' };
+    }
+    if (auth.status === 'syncFailed') {
+      return { label: '同步失败', tone: 'bad', title: '同步失败', desc: '已获取授权，但同步账户信息失败，请重试同步或重新发起授权。' };
+    }
+    if (auth.status === 'expired' || auth.status === 'error') {
+      return { label: auth.status === 'expired' ? '授权已过期' : '授权异常', tone: 'bad', title: '授权过期或异常', desc: '当前授权不可用，请重新授权后再创建投放计划。' };
+    }
+    return { label: '未授权', tone: 'warn', title: '尚未绑定巨量引擎账号', desc: '完成授权后，系统将自动同步账户余额、可投放账号和投放数据。' };
+  }
+
+  function authStepList(steps, activeIndex, doneIndex = activeIndex - 1) {
+    return `<div class="auth-flow-steps" style="--step-count:${steps.length}">${steps.map((step, index) => `
+      <div class="${index <= doneIndex ? 'done' : index === activeIndex ? 'active' : ''}">
+        <i>${index + 1}</i>
+        <span>${step}</span>
+      </div>
+    `).join('')}</div>`;
+  }
+
+  function beginAuthRedirect() {
+    clearAuthFlowTimer();
+    data.giantAuth.status = 'authorizing';
+    render();
+    authFlowTimer = setTimeout(() => {
+      data.giantAuth.status = 'confirm';
+      data.giantAuth.accountName = '上海星辰装饰巨量引擎主账户';
+      data.giantAuth.accountId = 'AD-1098-5623-2048';
+      data.giantAuth.subject = '上海星辰装饰工程有限公司';
+      data.giantAuth.authorizedAt = '2026-06-24 10:42';
+      data.giantAuth.expiresAt = '2027-06-24 10:42';
+      data.giantAuth.balance = '¥18,600';
+      data.giantAuth.availableAccountCount = 4;
+      render();
+      toast('巨量引擎授权成功，请确认绑定信息');
+    }, 1100);
+  }
+
+  function beginAccountSync() {
+    clearAuthFlowTimer();
+    data.giantAuth.status = 'syncing';
+    render();
+    authFlowTimer = setTimeout(() => {
+      data.giantAuth.status = 'authorized';
+      data.giantAuth.lastSyncAt = '2026-06-24 10:45';
+      data.giantAuth.availableAccountCount = data.giantAuth.accounts.filter(item => item.deliveryStatus === '可投放').length;
+      data.giantAuth.accounts.forEach(item => { item.syncedAt = data.giantAuth.lastSyncAt; });
+      render();
+      toast('绑定成功，已同步可投放账号');
+    }, 1200);
   }
 
   function hashText(text) {
@@ -566,6 +648,18 @@
     `;
   }
 
+  function aiConfirmLabel(item) {
+    const labels = {
+      '加预算': '确认扩量',
+      '替换素材': '确认换素材',
+      '暂停低效组合': '确认暂停',
+      '新增账号': '确认新增',
+      '发布提醒': '确认发布',
+      '素材复盘': '确认复盘'
+    };
+    return labels[item.type] || item.buttons?.[0] || '确认';
+  }
+
   function aiActionList() {
     return `<div class="cockpit-side-list">${data.aiActions.map((item, index) => `
       <div class="cockpit-side-item ${item.tone}">
@@ -575,7 +669,10 @@
           <b>${item.recommendation}</b>
           <p>${item.evidence}</p>
         </div>
-        <button class="mini-btn" data-action="quick-action" data-label="${item.buttons[0]}">${item.buttons[0]}</button>
+        <div class="advice-actions">
+          <button class="mini-btn" data-action="quick-action" data-label="忽略建议">忽略</button>
+          <button class="mini-btn confirm" data-action="quick-action" data-label="${aiConfirmLabel(item)}">${aiConfirmLabel(item)}</button>
+        </div>
       </div>
     `).join('')}</div>`;
   }
@@ -1156,6 +1253,184 @@
     `;
   }
 
+  function renderAuthorization() {
+    const auth = data.giantAuth;
+    const meta = authStatusMeta();
+    const isReady = isGiantAuthReady();
+    const canDeliverCount = auth.accounts.filter(item => item.deliveryStatus === '可投放').length;
+    const canShowTable = isReady || auth.status === 'expired' || auth.status === 'error' || auth.status === 'syncFailed';
+    const rows = isReady ? auth.accounts.map(item => `
+      <tr class="risk-row ${item.tone}">
+        <td><b>${item.name}</b><span>${item.reason}</span></td>
+        <td>${item.platform}</td>
+        <td>${item.type}</td>
+        <td>${tag(item.authStatus, item.authStatus === '已授权' ? 'good' : 'bad')}</td>
+        <td>${tag(item.deliveryStatus, item.deliveryStatus === '可投放' ? 'good' : 'warn')}</td>
+        <td>${item.syncedAt}</td>
+        <td>${actionButtons(['查看详情', '刷新状态', '查看原因'])}</td>
+      </tr>
+    `).join('') : `
+      <tr>
+        <td colspan="7">
+          <div class="auth-table-empty">
+            <b>${meta.title}</b>
+            <span>${meta.desc}</span>
+          </div>
+        </td>
+      </tr>
+    `;
+    const managePanel = `
+      <section class="card card-pad auth-status-card ${meta.tone}">
+        <div class="dash-head"><h3>当前授权状态</h3>${tag('P0 仅支持绑定 1 个巨量引擎账号', 'blue')}</div>
+        <div class="auth-kpi-grid">
+          ${UI.info('授权状态', meta.label)}
+          ${UI.info('巨量引擎账户名称', auth.accountName)}
+          ${UI.info('账户ID', auth.accountId)}
+          ${UI.info('授权主体', auth.subject)}
+          ${UI.info('授权时间', auth.authorizedAt)}
+          ${UI.info('授权到期时间', auth.expiresAt)}
+          ${UI.info('账户余额', auth.balance)}
+          ${UI.info('可投账号数量', `${canDeliverCount} / ${auth.accounts.length}`)}
+        </div>
+        <div class="auth-actions">
+          <button class="btn" data-action="sync-auth-account">同步账号</button>
+          <button class="mini-btn" data-action="reauth-giant">重新授权</button>
+          <button class="mini-btn danger-lite" data-action="unbind-giant">解除绑定</button>
+        </div>
+      </section>
+    `;
+    const emptyPanel = `
+      <section class="card card-pad auth-status-card ${meta.tone}">
+        <div class="dash-head"><h3>首次绑定入口</h3>${tag('P0 单账号绑定', 'warn')}</div>
+        <div class="auth-empty-state ${meta.tone}">
+          <div class="auth-empty-icon">+</div>
+          <b>尚未绑定巨量引擎账号</b>
+          <p>完成授权后，系统将自动同步账户余额、可投放账号和投放数据。</p>
+          <div class="auth-capability-grid">
+            ${['同步可投账号', '账户余额', '投放数据'].map(item => `<span>${item}</span>`).join('')}
+          </div>
+          <button class="btn" data-action="authorize-giant">立即授权巨量引擎</button>
+        </div>
+      </section>
+    `;
+    const redirectPanel = `
+      <section class="card card-pad auth-process-card">
+        <div class="auth-process-head">
+          <div class="auth-process-pulse"></div>
+          <div>
+            <h3>正在跳转巨量引擎授权页面</h3>
+            <p>请在巨量引擎授权页确认授权，系统将通过回调继续完成绑定。</p>
+          </div>
+          ${tag('授权中', 'blue')}
+        </div>
+        ${authStepList(['发起授权请求', '等待巨量引擎确认', '回调系统并同步数据'], 1, 0)}
+        <div class="auth-flow-actions">
+          <button class="mini-btn" data-action="auth-flow-reset">返回</button>
+          <button class="mini-btn danger-lite" data-action="simulate-auth-failed">模拟授权失败</button>
+        </div>
+      </section>
+    `;
+    const confirmPanel = `
+      <section class="card card-pad auth-status-card blue">
+        <div class="dash-head"><h3>授权成功</h3>${tag('待确认绑定', 'blue')}</div>
+        <div class="auth-confirm-copy">
+          <b>已获取巨量引擎授权，请确认本次绑定账户信息</b>
+          <span>确认后系统将同步账户基本信息、可投放账号、账户余额与投放数据能力。</span>
+        </div>
+        <div class="auth-kpi-grid">
+          ${UI.info('巨量引擎账户名称', auth.accountName)}
+          ${UI.info('账户ID', auth.accountId)}
+          ${UI.info('授权主体', auth.subject)}
+          ${UI.info('授权时间', auth.authorizedAt)}
+          ${UI.info('账户余额', auth.balance)}
+          ${UI.info('可同步账号数', `${auth.availableAccountCount} 个`)}
+        </div>
+        <div class="auth-actions">
+          <button class="mini-btn" data-action="auth-flow-reset">返回修改</button>
+          <button class="btn" data-action="confirm-bind-sync">确认绑定并同步账号</button>
+        </div>
+      </section>
+    `;
+    const syncPanel = `
+      <section class="card card-pad auth-process-card">
+        <div class="auth-process-head">
+          <div class="auth-process-pulse"></div>
+          <div>
+            <h3>正在同步巨量引擎账号信息</h3>
+            <p>系统正在完成绑定后的账户数据初始化，请稍候。</p>
+          </div>
+          ${tag('同步中', 'blue')}
+        </div>
+        ${authStepList(['同步账户基本信息', '同步可投放账号', '同步授权状态', '完成绑定'], 2, 1)}
+        <div class="auth-flow-actions">
+          <button class="mini-btn danger-lite" data-action="simulate-sync-failed">模拟同步失败</button>
+        </div>
+      </section>
+    `;
+    const errorPanel = `
+      <section class="card card-pad auth-status-card bad">
+        <div class="dash-head"><h3>${meta.title}</h3>${tag(meta.label, 'bad')}</div>
+        <div class="auth-empty-state bad">
+          <div class="auth-empty-icon">!</div>
+          <b>${meta.title}</b>
+          <p>${meta.desc}</p>
+          <div class="auth-actions compact">
+            ${auth.status === 'syncFailed' ? '<button class="btn" data-action="confirm-bind-sync">重试同步</button>' : auth.status === 'expired' || auth.status === 'error' ? '<button class="btn" data-action="reauth-giant">重新授权</button>' : '<button class="btn" data-action="authorize-giant">重新发起授权</button>'}
+            <button class="mini-btn" data-action="${auth.status === 'expired' || auth.status === 'error' ? 'unbind-giant' : 'auth-flow-reset'}">${auth.status === 'expired' || auth.status === 'error' ? '解除绑定' : '返回未绑定状态'}</button>
+          </div>
+        </div>
+      </section>
+    `;
+    const panelMap = {
+      authorized: managePanel,
+      expired: errorPanel,
+      error: errorPanel,
+      unbound: emptyPanel,
+      authorizing: redirectPanel,
+      confirm: confirmPanel,
+      syncing: syncPanel,
+      authFailed: errorPanel,
+      syncFailed: errorPanel
+    };
+    const authModal = state.authModal ? `
+      <div class="auth-modal-layer">
+        <div class="auth-modal">
+          <div class="modal-head"><h3>${state.authModal === 'bind' ? '开始绑定巨量引擎账号' : '需要先解除当前绑定'}</h3><button class="mini-btn" data-action="close-auth-modal">关闭</button></div>
+          ${state.authModal === 'bind' ? `
+            <p>即将跳转巨量引擎授权。授权成功后，系统将同步账户信息、可投放账号、余额及投放数据能力。</p>
+            <div class="auth-modal-warning">${tag('当前版本仅支持绑定 1 个巨量引擎账号', 'warn')}<span>如需更换账号，请先解除当前绑定。</span></div>
+            <div class="modal-actions"><button class="btn secondary" data-action="close-auth-modal">取消</button><button class="btn" data-action="go-giant-auth">去授权</button></div>
+          ` : `
+            <p>当前系统账号已绑定 1 个巨量引擎账号。P0 阶段暂不支持再次绑定或直接更换授权。</p>
+            <div class="auth-modal-warning">${tag('更换账号规则', 'warn')}<span>请先解除当前绑定，再重新发起授权。</span></div>
+            <div class="modal-actions"><button class="btn secondary" data-action="close-auth-modal">知道了</button><button class="mini-btn danger-lite" data-action="unbind-giant">解除绑定</button></div>
+          `}
+        </div>
+      </div>
+    ` : '';
+    return `
+      <div class="auth-page">
+        <section class="auth-hero">
+          <div>
+            <h3>巨量引擎授权管理</h3>
+            <p>绑定巨量引擎账号后，系统可同步可投放账号、账户余额、投放数据，并支持后续投放计划创建与监控调优。</p>
+          </div>
+          ${tag(meta.label, meta.tone)}
+        </section>
+        ${panelMap[auth.status] || emptyPanel}
+        <section class="card card-pad section ${canShowTable ? '' : 'auth-muted-section'}">
+          <div class="dash-head"><h3>可投放账号列表</h3>${tag(isReady ? `最近同步 ${auth.lastSyncAt}` : '等待授权后同步', isReady ? 'good' : 'warn')}</div>
+          ${UI.table(['账号名称', '平台', '账号类型', '授权状态', '可投放状态', '最近同步时间', '操作'], [rows])}
+        </section>
+        <section class="card card-pad section auth-note-card">
+          <div class="dash-head"><h3>授权说明</h3>${tag('长期支持多账号', 'blue')}</div>
+          <p>当前版本仅支持绑定 1 个巨量引擎账号。如需更换账户，请先解除当前绑定后重新授权。后续版本将支持多巨量引擎账户管理。</p>
+        </section>
+        ${authModal}
+      </div>
+    `;
+  }
+
   function renderMaterials() {
     const statusTabs = ['全部素材', '视频素材', '图文素材', '多次投放', '待复盘'];
     const rows = data.materialRecommendations.map(item => `
@@ -1388,6 +1663,7 @@
     const pages = {
       home: renderHome,
       acquisition: renderAcquisition,
+      auth: renderAuthorization,
       materials: renderMaterials,
       leads: renderLeadPool,
       distribution: renderDistribution,
@@ -1409,6 +1685,10 @@
     if (action === 'logout') return toast('已退出登录');
     if (action === 'customer-detail') return toast(`查看装企承接：${actionEl.dataset.name}`);
     if (action === 'plan-create') {
+      if (!isGiantAuthReady()) {
+        setPage('auth');
+        return toast('创建投放计划前请先完成巨量引擎授权');
+      }
       clearPublishAuditTimers();
       state.planView = 'create';
       state.createStep = 0;
@@ -1453,6 +1733,10 @@
       return toast('已进入下一步');
     }
     if (action === 'ai-parse-start') {
+      if (!isGiantAuthReady()) {
+        setPage('auth');
+        return toast('创建投放计划前请先完成巨量引擎授权');
+      }
       showAiFullscreenLoader(() => {
         state.createStage = 'result';
         state.createStep = 0;
@@ -1472,6 +1756,10 @@
       return;
     }
     if (action === 'create-next-step') {
+      if (state.planView === 'create' && !isGiantAuthReady()) {
+        setPage('auth');
+        return toast('创建投放计划前请先完成巨量引擎授权');
+      }
       if (state.planView === 'create' && state.createStep === 1 && comboBudgetTotal() > 100) {
         return toast('预算占比合计不能超过100%');
       }
@@ -1569,6 +1857,60 @@
       state.planStep = null;
       return setPage('home');
     }
+    if (action === 'authorize-giant' || action === 'reauth-giant') {
+      if (['authorized', 'expired', 'error'].includes(data.giantAuth.status)) {
+        state.authModal = 'bound';
+        render();
+        return toast('当前已绑定账号，请先解除绑定后重新授权');
+      }
+      state.authModal = 'bind';
+      render();
+      return;
+    }
+    if (action === 'close-auth-modal') {
+      state.authModal = null;
+      render();
+      return;
+    }
+    if (action === 'go-giant-auth') {
+      state.authModal = null;
+      beginAuthRedirect();
+      return toast('正在跳转巨量引擎授权页面');
+    }
+    if (action === 'auth-flow-reset') {
+      clearAuthFlowTimer();
+      data.giantAuth.status = 'unbound';
+      state.authModal = null;
+      render();
+      return toast('已返回未绑定状态');
+    }
+    if (action === 'simulate-auth-failed') {
+      clearAuthFlowTimer();
+      data.giantAuth.status = 'authFailed';
+      render();
+      return toast('授权失败，请重新发起授权');
+    }
+    if (action === 'confirm-bind-sync') {
+      beginAccountSync();
+      return toast('正在同步巨量引擎账号信息');
+    }
+    if (action === 'simulate-sync-failed') {
+      clearAuthFlowTimer();
+      data.giantAuth.status = 'syncFailed';
+      render();
+      return toast('同步失败，请重试同步');
+    }
+    if (action === 'sync-auth-account') {
+      beginAccountSync();
+      return toast('正在同步可投放账号状态');
+    }
+    if (action === 'unbind-giant') {
+      clearAuthFlowTimer();
+      data.giantAuth.status = 'unbound';
+      state.authModal = null;
+      render();
+      return toast('已解除当前巨量引擎账号绑定');
+    }
     if (action === 'quick-action') return toast(`${actionEl.dataset.label || actionEl.textContent.trim()}已记录`);
     if (action === 'dash-filter') {
       state.dashFilter = actionEl.dataset.filter;
@@ -1586,7 +1928,13 @@
       render();
       return toast(`已切换为${state.dashGrain}`);
     }
-    if (action === 'plan-draft') return openPlanModal();
+    if (action === 'plan-draft') {
+      if (!isGiantAuthReady()) {
+        setPage('auth');
+        return toast('创建投放计划前请先完成巨量引擎授权');
+      }
+      return openPlanModal();
+    }
     if (action === 'close-modal') return closePlanModal();
     if (action === 'confirm-plan') return confirmPlan();
   }
