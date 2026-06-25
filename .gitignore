@@ -1,22 +1,91 @@
-# macOS system metadata
+# Root workspace
 .DS_Store
 **/.DS_Store
-
-# Local archives / packaged demo outputs
+Thumbs.db
 *.zip
-
-# Office temporary lock files
+*.tar
+*.tar.gz
+*.tgz
 .~*
 ~$*
-
-# Editor and local runtime noise
-.vscode/
-.idea/
 *.log
-
-# Dependency/build caches, if added later
-node_modules/
-dist/
-build/
+*.log.*
 .cache/
-.tmp/
+
+# Local editor state
+/.idea/
+/.vscode/
+
+# Local environment and secrets at workspace root
+.env
+.env.*
+!.env.example
+!.env.example.*
+!.env.sample
+!.env.sample.*
+
+# Frontend: marketingFE
+/marketingFE/node_modules/
+/marketingFE/.pnp/
+/marketingFE/.pnp.*
+/marketingFE/.next/
+/marketingFE/out/
+/marketingFE/build/
+/marketingFE/dist/
+/marketingFE/coverage/
+/marketingFE/.turbo/
+/marketingFE/.vercel/
+/marketingFE/.clerk/
+/marketingFE/.vscode/
+/marketingFE/.idea/
+/marketingFE/.agents/
+/marketingFE/.claude/
+/marketingFE/memory-bank/
+/marketingFE/.cursorrules
+/marketingFE/*.tsbuildinfo
+/marketingFE/next-env.d.ts
+/marketingFE/npm-debug.log*
+/marketingFE/yarn-debug.log*
+/marketingFE/yarn-error.log*
+/marketingFE/pnpm-debug.log*
+/marketingFE/bun-debug.log*
+/marketingFE/.env
+/marketingFE/.env.*
+!/marketingFE/.env.example
+!/marketingFE/.env.example.*
+!/marketingFE/.env.sample
+!/marketingFE/.env.sample.*
+/marketingFE/*.pem
+/marketingFE/.env.sentry-build-plugin
+
+# Backend: marketingBE
+/marketingBE/.gradle/
+/marketingBE/**/target/
+/marketingBE/**/build/
+/marketingBE/.run/
+/marketingBE/.idea/
+/marketingBE/.vscode/
+/marketingBE/**/.settings/
+/marketingBE/**/.classpath
+/marketingBE/**/.project
+/marketingBE/**/.factorypath
+/marketingBE/**/.apt_generated
+/marketingBE/**/.springBeans
+/marketingBE/**/*.iws
+/marketingBE/**/*.iml
+/marketingBE/**/*.ipr
+/marketingBE/**/logs/
+/marketingBE/**/tmp/
+/marketingBE/**/temp/
+/marketingBE/**/*.log
+/marketingBE/**/*.log.*
+/marketingBE/**/*.log.gz
+/marketingBE/**/*.xml.versionsBackup
+/marketingBE/**/*.swp
+/marketingBE/**/*.swo
+/marketingBE/**/.flattened-pom.xml
+/marketingBE/**/rebel.xml
+
+# Keep wrapper binaries if added later
+!/marketingBE/**/.mvn/wrapper/maven-wrapper.jar
+!/marketingBE/**/gradle/wrapper/gradle-wrapper.jar

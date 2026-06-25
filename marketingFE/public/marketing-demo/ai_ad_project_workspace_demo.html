@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI广告项目工作台</title>
+  <style>
+    :root{
+      --bg:#f6f6f8;--panel:#fff;--ink:#202333;--muted:#7a8190;--line:#e8ebf0;
+      --primary:#ff3029;--primary-2:#fff1f0;--orange:#ff8a00;--green:#16a36b;--red:#ff3029;
+      --shadow:0 12px 34px rgba(31,35,45,.06);--radius:16px;
+      --brand-grad:linear-gradient(135deg,#ff2d28 0%,#ff6a22 100%);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    button,input,select,textarea{font:inherit}
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+    .app{min-height:100vh;display:block}
+    .main{margin-left:0;width:100%;padding:0;background:linear-gradient(180deg,#fff 0,#f7f7f9 190px,#f6f6f8 100%)}
+    .main>.page:not(.home-page){padding:28px 34px 52px}
+    .main.workspace-shell{height:100vh;overflow:hidden}
+    .main.workspace-shell #workspace:not(.hide){height:calc(100vh - 72px);padding:28px 34px;display:flex;flex-direction:column;min-height:0}
+    #workspace:not(.hide){display:flex;flex-direction:column;min-height:0}
+    #workspace .topbar{flex:0 0 auto;margin-bottom:18px}
+    #workspace .version-strip{flex:0 0 auto}
+    .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}
+    .title h1{margin:0;font-size:28px;letter-spacing:0;color:#171b2a}
+    .title p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.7}
+    .btn{border:1px solid transparent;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;font-size:14px;transition:.16s ease;color:var(--ink)}
+    .btn-primary{background:var(--brand-grad);color:white;box-shadow:0 12px 24px rgba(255,48,41,.2)}
+    .btn-ghost{background:#f5f6f8;color:#253044}
+    .btn-outline{background:#fff;border:1px solid var(--line);color:#253044}
+    .btn:hover{transform:translateY(-1px)}
+    .btn-mini{padding:7px 10px;font-size:12px}
+    .workspace-return{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 13px;color:#344054;font-size:13px;font-weight:900;box-shadow:var(--shadow)}
+    .grid{display:grid;gap:16px}
+    .projects{grid-template-columns:repeat(5,minmax(0,1fr));align-items:stretch}
+    .kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:16px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .panel{padding:20px}
+    .project-card{padding:16px;transition:.18s ease;display:flex;flex-direction:column;min-height:360px}
+    .project-card:hover{transform:translateY(-2px)}
+    .project-tags{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow:hidden}
+    .project-tags .tag{margin:0;white-space:nowrap;padding:5px 8px}
+    .tag{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;background:#f1f2f5;color:#596171;margin:0 6px 6px 0}
+    .tag.green{background:#e9f8f0;color:#087443}.tag.orange{background:#fff3df;color:#b25a00}.tag.dark{background:#f1f2f5;color:#596171}.tag.red{background:#fff1f0;color:var(--red)}.tag.blue{background:#eef6ff;color:#175cd3}
+    .project-title{font-size:16px;font-weight:900;margin:10px 0 12px;line-height:1.35;min-height:44px;border-bottom:1px solid var(--line);padding-bottom:10px}
+    .meta{font-size:12px;color:var(--muted);line-height:1.7}
+    .progress{height:8px;background:#edf1f5;border-radius:999px;overflow:hidden;margin:14px 0 8px}
+    .bar{height:100%;background:var(--brand-grad);border-radius:999px;transition:width .35s ease}
+    .progress-text{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+    .project-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:auto;padding-top:14px}
+    .project-actions .btn{width:100%;padding:9px 10px}
+    .project-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;margin-bottom:18px}
+    .project-tools-left{display:flex;gap:12px;flex-wrap:wrap}
+    .project-filter,.project-search,.project-sort{height:38px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#344054;font-size:13px;font-weight:800}
+    .project-filter,.project-sort{padding:0 12px}
+    .project-search{width:280px;padding:0 13px}
+    .project-meta-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}
+    .project-meta-row{display:grid;grid-template-columns:58px 1fr;gap:8px;font-size:12px;line-height:1.45}
+    .project-meta-row span{color:#8b93a3}
+    .project-meta-row b{color:#253044}
+    .project-state{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;font-size:12px;font-weight:800;color:#475467}
+    .project-dot{display:inline-flex;align-items:center;gap:6px}
+    .project-dot:before{content:"";width:8px;height:8px;border-radius:999px;background:var(--primary)}
+    .project-dot.green:before{background:#20b26b}
+    .metric{padding:18px}
+    .metric span{display:block;color:var(--muted);font-size:12px;font-weight:800}
+    .metric strong{display:block;font-size:26px;margin-top:8px}
+    .metric small{display:block;color:var(--primary);margin-top:8px;font-weight:800}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .field label{display:block;font-size:13px;color:#344054;margin-bottom:7px;font-weight:800}
+    .field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 12px;font-size:14px;color:var(--ink)}
+    .field textarea{min-height:88px;resize:vertical}
+    .brief-box{border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:0 14px 36px rgba(31,35,45,.05);overflow:hidden}
+    .brief-box textarea{width:100%;min-height:240px;border:0;resize:vertical;padding:22px 24px;font-size:16px;line-height:1.8;color:var(--ink);background:linear-gradient(180deg,#fff,#fffaf9)}
+    .brief-box textarea:focus{outline:0}
+    .brief-tools{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);padding:14px 16px;background:#fff}
+    .brief-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .upload-chip{position:relative;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:9px 12px;font-size:13px;font-weight:900;color:#344054;cursor:pointer}
+    .upload-chip:hover{border-color:#ffc1bb;background:#fff7f5;color:var(--primary)}
+    .upload-chip input{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .brief-example{margin-top:14px;color:var(--muted);font-size:13px;line-height:1.7}
+    .hint{background:#fff7f2;border:1px solid #ffe0ca;border-radius:14px;padding:16px;color:#344054;font-size:14px;line-height:1.75}
+    .notice{background:#fff8e8;border:1px solid #ffdca6;color:#8a4c00;border-radius:14px;padding:13px 14px;font-size:13px;line-height:1.65}
+    .hide{display:none!important}
+    .workspace-flow{display:grid;grid-template-columns:236px minmax(0,1fr);gap:18px;align-items:start}
+    #workspace .workspace-flow{flex:1;min-height:0;overflow:hidden}
+    .stepper{position:sticky;top:24px;display:grid;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+    #workspace .stepper{position:static;max-height:100%;overflow:auto}
+    .stepper:before{content:"结果导航";font-size:12px;font-weight:900;color:#98a2b3;padding:2px 8px 6px}
+    .step{position:relative;border:1px solid transparent;background:transparent;color:#667085;cursor:pointer;font-weight:900;font-size:13px;text-align:left;padding:12px 12px 12px 44px;border-radius:12px;min-height:62px;transition:.18s ease}
+    .step:before{content:"";position:absolute;top:17px;left:17px;width:12px;height:12px;border-radius:999px;background:#cfd6e2;color:#667085;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:1;box-shadow:0 0 0 6px #fff}
+    .step:after{content:"";position:absolute;left:23px;top:40px;bottom:-16px;width:2px;background:#e4e9ef}
+    .step:last-child:after{display:none}
+    .step b{display:block;color:#344054;font-size:14px;line-height:1.25}
+    .step span{display:block;margin-top:5px;color:#98a2b3;font-size:12px;line-height:1.35;font-weight:800}
+    .step.done:before{content:"";background:var(--primary);color:#fff}
+    .step.done:after{background:linear-gradient(180deg,var(--primary),#ffd7d4)}
+    .step.active{border-color:#ffd0ca;background:#fff7f5;color:var(--primary);box-shadow:inset 3px 0 0 var(--primary)}
+    .step.active:before{content:"";background:var(--primary);color:#fff;box-shadow:0 0 0 6px #fff1f0}
+    .step.active b{color:var(--primary)}
+    .step.active span{color:#8a4c00}
+    .workspace-layout{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+    .workspace-flow .workspace-layout{grid-template-columns:1fr}
+    .workspace-flow .compose-layout{grid-template-columns:minmax(360px,.7fr) minmax(420px,1fr)}
+    .movie-panel{padding:28px 32px}
+    .movie-copy{margin-bottom:24px}
+    .movie-body{display:grid;grid-template-columns:minmax(280px,.52fr) minmax(440px,1fr);gap:72px;align-items:start}
+    .movie-preview{display:grid;justify-items:center;gap:20px}
+    .movie-actions{display:flex;gap:16px;justify-content:flex-start;flex-wrap:wrap;margin-top:0}
+    .movie-actions .btn{min-width:150px}
+    .movie-info-list{display:grid;gap:13px}
+    .movie-info-item{display:grid;grid-template-columns:58px 140px 1fr;align-items:center;gap:20px;min-height:88px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:16px 22px}
+    .movie-info-icon{width:38px;height:38px;border-radius:999px;background:#fff1f0;color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:20px}
+    .movie-info-item span{color:#667085;font-weight:900;font-size:14px;border-right:1px solid var(--line);padding-right:20px}
+    .movie-info-item b{font-size:16px;line-height:1.4;color:#101828}
+    .flow-content{display:grid;gap:18px;align-items:start}
+    #workspace .flow-content{max-height:100%;min-height:0;overflow-y:auto;padding:0 8px 26px 0;scroll-behavior:smooth}
+    .step-page{scroll-margin-top:24px}
+    .create-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+    .script-stage{display:grid;grid-template-columns:1fr;gap:16px}
+    .section-title{font-size:18px;font-weight:900;margin:0 0 14px}
+    .title-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#fff1f0;color:var(--primary);margin-right:8px;vertical-align:-5px;font-size:14px}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .section-head .section-title{margin:0}
+    .sub-title{font-size:14px;font-weight:900;color:#344054;margin:18px 0 10px}
+    .kv{display:grid;grid-template-columns:128px 1fr;border-bottom:1px solid var(--line);padding:11px 0;font-size:14px;gap:10px}
+    .kv span:first-child{color:var(--muted)}
+    .pill-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .direction-card,.deliver{border:1px solid var(--line);border-radius:var(--radius);background:#fff}
+    .direction-card{padding:16px;margin-bottom:12px;cursor:pointer;position:relative}
+    .direction-card.active{border-color:var(--primary);background:var(--primary-2);box-shadow:inset 4px 0 0 var(--primary)}
+    .score{position:absolute;right:14px;top:14px;background:var(--primary);color:#fff;border-radius:999px;padding:6px 10px;font-size:13px;font-weight:900;box-shadow:0 8px 18px rgba(255,48,41,.18)}
+    .direction-card h4{margin:0 0 8px}.direction-card p{margin:0;color:#667085;font-size:13px;line-height:1.6}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius)}
+    .task-table{width:100%;border-collapse:collapse;font-size:13px;min-width:680px;background:#fff}
+    .task-table th,.task-table td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+    .task-table tr:last-child td{border-bottom:0}.task-table th{color:#667085;background:#f8fafc;font-weight:900}
+    .status{font-weight:900;border-radius:999px;padding:4px 8px;font-size:12px;white-space:nowrap}
+    .status.wait{background:#f2f4f7;color:#667085}.status.doing{background:#fff3dd;color:#b25a00}.status.done{background:#e9f8f0;color:#087443}.status.risk{background:#fff1f0;color:var(--red)}
+    .preview-phone{width:260px;height:460px;border-radius:28px;background:#0b1020;margin:0 auto;padding:13px;box-shadow:0 26px 54px rgba(16,24,39,.25)}
+    .phone-screen{height:100%;border-radius:21px;background:linear-gradient(180deg,#2d4f5f,#111827 48%,#0f1724);position:relative;overflow:hidden;color:#fff;padding:18px}
+    .phone-screen video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+    .phone-scene{position:absolute;inset:18px 18px 176px;border-radius:14px;background:linear-gradient(135deg,#d8b88f,#fff4df 38%,#6d8b83);opacity:.9}
+    .quote-card{position:absolute;left:24px;right:24px;top:92px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.24);border-radius:var(--radius);padding:14px}
+    .quote-line{height:10px;background:rgba(255,255,255,.38);border-radius:999px;margin:9px 0}
+    .video-title{position:absolute;left:18px;right:18px;bottom:90px;font-size:22px;font-weight:900;line-height:1.25}
+    .cta{position:absolute;left:18px;right:18px;bottom:28px;background:#fff;color:#111827;border-radius:999px;text-align:center;padding:12px;font-weight:900}
+    .timeline{display:flex;gap:8px;margin-top:18px}.clip{flex:1;background:#edf6f4;border:1px solid #cfe4de;border-radius:var(--radius);padding:10px;font-size:12px;color:#475467;text-align:center;min-width:76px}
+    .deliverables{display:grid;grid-template-columns:1fr 1fr;gap:12px}.deliver{padding:14px}.deliver b{display:block;margin-bottom:6px}.deliver span{font-size:13px;color:#667085}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+    .summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .summary-item{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:#fff}
+    .summary-item span{display:block;color:var(--muted);font-size:12px;font-weight:800;margin-bottom:6px}
+    .summary-item b{font-size:15px}
+    .analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+    .analysis-card{border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:#fff}
+    .analysis-card h4{margin:0 0 8px;font-size:14px}
+    .analysis-card p{margin:0;color:#475467;font-size:13px;line-height:1.7}
+    .analysis-card strong{color:var(--ink)}
+    .strategy-panel{padding:18px 20px}
+    .strategy-hero{position:relative;overflow:hidden;border-radius:14px;padding:24px 220px 24px 24px;background:linear-gradient(105deg,#fff6ea 0%,#fff 58%,#ffe3cf 100%);border:1px solid #ffe1c2;margin-bottom:14px}
+    .strategy-hero:after{content:"";position:absolute;right:36px;top:26px;width:126px;height:126px;border-radius:999px;background:radial-gradient(circle,#ffd8d4 0 30%,#fff5f4 31% 50%,#ffb1a8 51% 52%,transparent 53%);opacity:.88}
+    .strategy-hero:before{content:"";position:absolute;right:82px;top:58px;width:36px;height:36px;border-radius:999px;background:var(--brand-grad);z-index:1;box-shadow:0 0 0 8px rgba(255,48,41,.12)}
+    .strategy-copy{position:relative;z-index:2;font-size:24px;line-height:1.45;font-weight:900;color:#1f2433;margin:0 0 18px}
+    .strategy-copy strong{color:var(--primary)}
+    .strategy-tags{display:flex;gap:12px;flex-wrap:wrap;position:relative;z-index:2}
+    .strategy-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid #ffd0ca;background:rgba(255,255,255,.76);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:900;color:#303747}
+    .strategy-chip i{font-style:normal;color:var(--primary)}
+    .ai-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
+    .ai-summary-card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;min-height:86px;display:flex;gap:12px;align-items:center}
+    .workspace-flow .ai-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .summary-icon{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:#fff1f0;color:var(--primary);flex:0 0 auto}
+    .summary-icon svg{width:18px;height:18px;stroke:currentColor;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .ai-summary-card > div span{display:block;color:var(--muted);font-size:12px;font-weight:900;margin-bottom:4px}
+    .ai-summary-card b{display:block;font-size:15px;line-height:1.35}
+    .detail-toggle{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;overflow:hidden}
+    .detail-toggle summary{cursor:pointer;padding:13px 14px;font-size:14px;font-weight:900;color:#344054;list-style:none}
+    .detail-toggle summary::-webkit-details-marker{display:none}
+    .detail-toggle summary:after{content:"展开";float:right;color:var(--primary);font-size:12px}
+    .detail-toggle[open] summary:after{content:"收起"}
+    .detail-body{border-top:1px solid var(--line);padding:14px}
+    .strategy-list{display:grid;gap:10px;margin-top:12px}
+    .strategy-row{display:grid;grid-template-columns:112px 1fr;gap:12px;border-bottom:1px solid var(--line);padding:10px 0;font-size:13px;line-height:1.65}
+    .strategy-row:last-child{border-bottom:0}
+    .strategy-row span{color:var(--muted);font-weight:900}
+    .strategy-row b{font-weight:900}
+    .compact-list{display:grid;gap:10px}
+    .compact-row{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start;border-bottom:1px solid var(--line);padding:9px 0;font-size:13px;line-height:1.55}
+    .compact-row:last-child{border-bottom:0}
+    .compact-row span{color:var(--muted);font-weight:800}
+    .mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .mode-card{border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:#fff;cursor:pointer}
+    .mode-card.active{border-color:var(--primary);background:var(--primary-2);box-shadow:inset 4px 0 0 var(--primary)}
+    .mode-card h4{margin:0 0 8px;font-size:15px}.mode-card p{margin:0;color:#667085;font-size:13px;line-height:1.65}
+    .version-strip{display:flex;align-items:center;gap:8px;margin:-8px 0 14px;overflow:auto;padding:2px 0 4px}
+    .version-card{border:1px solid var(--line);border-radius:999px;background:#fff;padding:7px 10px;text-align:left;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;min-height:36px}
+    .version-card.active{border-color:var(--primary);background:var(--primary-2);box-shadow:0 0 0 2px rgba(255,48,41,.08)}
+    .version-card b{font-size:13px}
+    .version-card span{color:var(--muted);font-size:12px}
+    .version-card small{display:inline-flex;border-radius:999px;background:#eef2f6;color:#475467;padding:3px 7px;font-size:11px;font-weight:900}
+    .version-card.active small{background:#fff;color:var(--primary)}
+    .monitor-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .monitor-card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px}
+    .monitor-card span{display:block;color:var(--muted);font-size:12px;font-weight:900;margin-bottom:8px}
+    .monitor-card b{font-size:20px}
+    .monitor-card small{display:block;margin-top:6px;color:var(--muted);font-weight:800}
+    .launch-progress{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0 20px;padding-top:22px}
+    .launch-progress:before{content:"";position:absolute;left:calc(16.66% + 8px);right:calc(16.66% + 8px);top:13px;height:3px;background:#e4e9ef;border-radius:999px}
+    .launch-progress:after{content:"";position:absolute;left:calc(16.66% + 8px);top:13px;height:3px;width:var(--launch-progress,0%);background:var(--brand-grad);border-radius:999px;transition:.25s ease}
+    .launch-step{position:relative;text-align:center;color:var(--muted);font-size:12px;font-weight:900}
+    .launch-step:before{content:attr(data-index);position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:999px;background:#eef2f6;color:#667085;display:flex;align-items:center;justify-content:center;z-index:1}
+    .launch-step span{display:block;margin-bottom:5px}
+    .launch-step b{font-size:13px;color:#475467}
+    .launch-step.active,.launch-step.done{color:var(--primary)}
+    .launch-step.active:before,.launch-step.done:before{background:var(--brand-grad);color:#fff}
+    .launch-step.active b{color:var(--ink)}
+    .comparison-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:12px}
+    .compare-card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:16px}
+    .compare-card.active{border-color:var(--primary);box-shadow:inset 4px 0 0 var(--primary)}
+    .compare-card h4{margin:0 0 8px;font-size:15px}
+    .compare-card p{margin:0;color:#475467;font-size:13px;line-height:1.65}
+    .compare-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+    .compare-metrics div{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px}
+    .compare-metrics span{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
+    .compare-metrics b{font-size:14px}
+    .review-result{border:1px solid #ffd8d4;background:#fff7f5;border-radius:var(--radius);padding:14px;margin-top:14px}
+    .review-result h4{margin:0 0 8px;font-size:15px}
+    .review-result p{margin:0;color:#344054;font-size:13px;line-height:1.7}
+    .review-table{margin-top:14px}
+    .review-table .task-table{min-width:760px}
+    .review-table b{display:block;margin-bottom:5px}
+    .review-table small{display:block;color:var(--muted);font-size:12px;line-height:1.55}
+    .script-control{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
+    .script-control .compact-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .script-control .compact-row{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:#fff}
+    .script-control .actions{margin-top:0;justify-content:flex-end}
+    .script-summary{display:grid;gap:12px;max-height:520px;overflow:auto;padding-right:4px}
+    .script-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fff}
+    .script-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
+    .script-head b{font-size:16px}.script-head span{font-size:12px;color:#667085;background:#f2f4f7;padding:5px 9px;border-radius:999px}
+    .script-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .script-tools .btn{padding:7px 10px;font-size:12px}
+    .script-row{display:grid;grid-template-columns:86px 1fr;gap:12px;font-size:13px;line-height:1.65;padding:7px 0}
+    .script-row div:first-child{color:#667085;font-weight:800}
+    .script-row b{font-size:14px}
+    .phase-note{margin-top:14px;color:var(--muted);font-size:13px;line-height:1.6}
+    .empty-art{min-height:180px;border-radius:var(--radius);background:linear-gradient(135deg,#fff1f0,#fff);border:1px dashed #ffc1bb;display:flex;align-items:center;justify-content:center;color:#667085;font-weight:900;text-align:center;padding:16px}
+    .drawer-mask{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:20;opacity:0;pointer-events:none;transition:.18s ease}
+    .drawer-mask.show{opacity:1;pointer-events:auto}
+    .asset-drawer{position:fixed;right:0;top:0;bottom:0;width:min(520px,92vw);background:#fff;z-index:21;box-shadow:-20px 0 50px rgba(15,23,42,.18);transform:translateX(100%);transition:.22s ease;padding:24px;overflow:auto}
+    .asset-drawer.show{transform:translateX(0)}
+    .drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
+    .drawer-head h2{margin:0;font-size:20px}.drawer-head p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
+    .modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.32);z-index:30;display:none;align-items:center;justify-content:center;padding:24px}
+    .modal-mask.show{display:flex}
+    .plan-modal{width:min(520px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 28px 70px rgba(15,23,42,.24);padding:24px}
+    .plan-modal h2{margin:0 0 18px;font-size:20px;line-height:1.3}
+    .plan-form{display:grid;gap:14px}
+    .plan-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:22px}
+    .media-preview{border:1px solid var(--line);border-radius:var(--radius);background:#101827;color:#fff;min-height:300px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;margin-bottom:18px}
+    .media-preview.audio{min-height:160px;background:linear-gradient(135deg,#172033,#2f6f62)}
+    .media-preview.image{padding:0;background:#101827;overflow:hidden;min-height:auto;aspect-ratio:9/16}
+    .media-preview.image img{width:100%;height:100%;object-fit:cover;display:block}
+    .media-preview b{display:block;font-size:20px;margin-bottom:8px}.media-preview span{color:#d6dde8;font-size:13px}
+    .loop{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.loop-item{padding:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)}.loop-item b{display:block;margin-bottom:8px}.loop-item span{color:var(--muted);font-size:13px;line-height:1.6}
+    .insight-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.chart-bars{display:grid;gap:10px;margin-top:12px}.chart-row{display:grid;grid-template-columns:92px 1fr 56px;gap:10px;align-items:center;font-size:13px;color:#475467}.chart-track{height:10px;background:#ecf0f4;border-radius:999px;overflow:hidden}.chart-fill{height:100%;background:linear-gradient(90deg,var(--primary),#ffb000);border-radius:999px}
+    .video-cell{display:flex;align-items:center;gap:10px;min-width:220px}
+    .video-thumb{width:52px;height:74px;border-radius:10px;background:#101827;overflow:hidden;flex:0 0 auto;border:1px solid var(--line)}
+    .video-thumb img,.video-thumb video{width:100%;height:100%;object-fit:cover;display:block}
+    .video-info b{display:block;margin-bottom:4px}.video-info span{display:block;color:var(--muted);font-size:12px;line-height:1.4}
+    .insight-list{display:grid;gap:12px;margin-top:12px}
+    .insight-item{border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:13px}
+    .insight-item b{display:block;margin-bottom:6px}.insight-item span{display:block;color:var(--muted);font-size:13px;line-height:1.65}
+    .toast{position:fixed;right:24px;bottom:24px;z-index:10;background:#142033;color:#fff;padding:12px 14px;border-radius:var(--radius);box-shadow:0 16px 36px rgba(16,24,39,.24);font-size:14px;opacity:0;transform:translateY(8px);pointer-events:none;transition:.22s ease}
+    .toast.show{opacity:1;transform:translateY(0)}
+    #step0.strategy-pending{grid-template-columns:1fr}
+    .ai-loading{min-height:0;color:var(--muted);padding:4px 14px 18px}
+    .ai-thinking{text-align:left;background:transparent;border:0;border-radius:0;padding:0;box-shadow:none;color:#858b95}
+    .ai-thinking h3{margin:0 0 12px;font-size:14px;font-weight:700;color:#858b95}
+    .thinking-list{display:grid;gap:9px}
+    .thinking-item{color:#858b95;font-size:14px;font-weight:600;line-height:1.55;animation:flowIn .18s ease-out both}
+    .thinking-item.done{display:none}
+    .thinking-item.active:after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:999px;background:#a4a9b2;vertical-align:1px;animation:pulseTiny 1s ease-in-out infinite}
+    .spinner{width:30px;height:30px;border-radius:999px;border:3px solid #dce5ec;border-top-color:var(--primary);display:inline-block;animation:spin .8s linear infinite}
+    .btn.is-loading{opacity:.78;pointer-events:none}
+    .btn.is-loading:before{content:"";width:13px;height:13px;border-radius:999px;border:2px solid rgba(255,255,255,.48);border-top-color:#fff;display:inline-block;margin-right:8px;vertical-align:-2px;animation:spin .8s linear infinite}
+    .btn-outline.is-loading:before,.btn-ghost.is-loading:before{border-color:rgba(255,48,41,.22);border-top-color:var(--primary)}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulseTiny{0%,100%{opacity:.35}50%{opacity:1}}
+    @keyframes flowIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:1500px){
+      .projects{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media(max-width:1240px){
+      .projects{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media(max-width:1100px){
+      .app{display:block}
+      .main{margin-left:0;width:100%;padding:22px}.projects{grid-template-columns:1fr 1fr}.project-toolbar{align-items:stretch;flex-direction:column}.project-search{width:100%}.workspace-flow,.workspace-layout,.workspace-flow .compose-layout,.movie-body,.insight-grid,.script-control,.mode-grid,.comparison-grid{grid-template-columns:1fr}.movie-body{gap:24px}.stepper{position:relative;top:auto;grid-template-columns:repeat(5,minmax(160px,1fr));overflow:auto}.stepper:before{display:none}.step{min-width:160px}.step:after{left:36px;right:-12px;top:24px;bottom:auto;width:auto;height:2px}.kpis,.monitor-grid,.ai-summary-grid{grid-template-columns:1fr 1fr}.loop{grid-template-columns:1fr 1fr}.script-control .compact-list{grid-template-columns:1fr}
+    }
+    @media(max-width:720px){
+      .projects,.form-grid,.deliverables,.kpis,.loop,.summary-grid,.monitor-grid,.compare-metrics,.ai-summary-grid{grid-template-columns:1fr}.main{padding:16px}.topbar{flex-direction:column}.title h1{font-size:22px}.panel{padding:16px}.preview-phone{width:min(260px,100%);height:460px}.kv{grid-template-columns:104px 1fr}.chart-row{grid-template-columns:76px 1fr 46px}.script-row{grid-template-columns:1fr}.script-summary{max-height:none;overflow:visible}.stepper{grid-template-columns:1fr}.step{min-width:0}.step:after{left:23px;top:40px;bottom:-16px;width:2px;height:auto;right:auto}
+    }
+  </style>
+  <link rel="stylesheet" href="styles/home.css" />
+</head>
+<body>
+<div class="app home-mode">
+  <main class="main">
+    <header class="app-topnav">
+      <div class="home-brand"><span class="home-logo" aria-hidden="true"></span><span>AI广告营销平台</span></div>
+      <nav class="home-nav" aria-label="主导航">
+        <button type="button" class="active" data-page="home" onclick="showPage('home')">首页</button>
+        <button type="button" data-page="dashboard" onclick="showPage('dashboard')">投放看板</button>
+        <button type="button" data-page="projects" onclick="showPage('projects')">我的项目</button>
+      </nav>
+      <div class="home-auth" aria-hidden="true"></div>
+    </header>
+    <section id="home" class="page home-page">
+      <div class="home-hero">
+        <div class="home-hero-inner">
+          <h1 class="home-title">让 <strong>AI</strong> 为你持续生成高转化广告</h1>
+          <p class="home-subtitle">输入投放需求，AI 自动生成营销方案、视频素材，并根据投放数据持续迭代下一版。</p>
+          <div class="home-prompt-wrap">
+            <textarea id="homePrompt" class="home-prompt" maxlength="1000" aria-label="投放需求" placeholder="例如：我想做一条老房翻新的抖音获客视频，目标是获取装修报价表单，时长15秒，面向首次装修和老房翻新用户。"></textarea>
+            <span id="homePromptCount" class="home-count">0/1000</span>
+          </div>
+          <div class="home-tools">
+            <button type="button" class="home-tool" onclick="notify('已打开资料上传入口')">上传资料</button>
+            <button type="button" class="home-tool" onclick="notify('语音输入已准备')">语音输入</button>
+            <button type="button" class="home-tool" onclick="fillHomeExample()">示例需求</button>
+          </div>
+          <button type="button" class="home-generate" onclick="submitHomePrompt(this)">✦ AI生成营销方案</button>
+          <section class="home-cases" aria-labelledby="homeCasesTitle">
+            <div class="home-cases-head">
+              <span class="case-spark" aria-hidden="true"></span>
+              <div>
+                <h2 id="homeCasesTitle">家装成功案例</h2>
+                <p>精选家装营销案例</p>
+              </div>
+              <span class="case-spark case-spark-right" aria-hidden="true"></span>
+              <button type="button" class="case-toggle" aria-expanded="true" aria-controls="homeCaseGrid" onclick="toggleHomeCases(this)">收起</button>
+            </div>
+            <div class="home-case-grid" id="homeCaseGrid">
+              <article class="home-case-card">
+                <img src="assets/qijia-shot-preview.png" alt="旧房翻新获客广告案例" />
+                <div class="home-case-copy">
+                  <h3><span class="case-icon">⌂</span>旧房翻新获客</h3>
+                  <p>面向首次装修与旧房改造用户，AI生成15秒短视频素材与投放文案</p>
+                  <div class="case-metric"><span>表单转化率</span><strong>+32%</strong></div>
+                </div>
+              </article>
+              <article class="home-case-card">
+                <img src="assets/qijia-shot-preview.png" alt="全屋整装咨询广告案例" />
+                <div class="home-case-copy">
+                  <h3><span class="case-icon">⌂</span>全屋整装咨询</h3>
+                  <p>围绕整装套餐、设计风格与优惠权益，快速产出多版广告创意</p>
+                  <div class="case-metric"><span>咨询线索成本</span><strong>-27%</strong></div>
+                </div>
+              </article>
+              <article class="home-case-card">
+                <img src="assets/qijia-shot-preview.png" alt="厨卫局改引流广告案例" />
+                <div class="home-case-copy">
+                  <h3><span class="case-icon">⌂</span>厨卫局改引流</h3>
+                  <p>聚焦厨房卫生间改造需求，突出局改前后对比与限时福利</p>
+                  <div class="case-metric"><span>到店咨询量</span><strong>+41%</strong></div>
+                </div>
+              </article>
+            </div>
+          </section>
+          <div class="home-flow" aria-label="AI广告生成流程">
+            <span class="home-flow-step"><i>◎</i>理解需求</span><span class="home-flow-dot"></span>
+            <span class="home-flow-step"><i>▤</i>生成方案</span><span class="home-flow-dot"></span>
+            <span class="home-flow-step"><i>▻</i>生成视频</span><span class="home-flow-dot"></span>
+            <span class="home-flow-step"><i>▥</i>投放分析</span><span class="home-flow-dot"></span>
+            <span class="home-flow-step"><i>↻</i>迭代下一版</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="dashboard" class="page hide">
+      <div class="topbar">
+        <div class="title"><h1>投放闭环看板</h1><p>展示所有项目已进入投放或待投放的广告视频，运营可以在这里判断加码、淘汰、复用还是生成新版本。</p></div>
+        <button class="btn btn-primary" onclick="showPage('create')">新建广告项目</button>
+      </div>
+      <div class="grid kpis">
+        <div class="card metric"><span>今日消耗</span><strong>¥12,480</strong><small>ROI 1.86</small></div>
+        <div class="card metric"><span>有效线索</span><strong>326</strong><small>成本 ¥38.3</small></div>
+        <div class="card metric"><span>投放视频</span><strong>12</strong><small>4 条进入放量</small></div>
+        <div class="card metric"><span>衰减预警</span><strong>5</strong><small style="color:var(--orange)">需准备替补</small></div>
+      </div>
+      
+      <div class="insight-grid">
+        <div class="card panel">
+          <h2 class="section-title">项目投放视频</h2>
+          <div class="table-wrap"><table class="task-table"><thead><tr><th>投放视频</th><th>项目 / 版本</th><th>排期</th><th>状态</th><th>点击率</th><th>表单成本</th><th>操作</th></tr></thead><tbody>
+            <tr>
+              <td><div class="video-cell"><div class="video-thumb"><img src="assets/qijia-shot-preview.png" alt="广告视频缩略图"></div><div class="video-info"><b>装修报价为什么差这么多</b><span>抖音 · 9:16 · 15 秒</span></div></div></td>
+              <td>齐家网·老房翻新获客视频<br/><span class="tag green">V1 初版</span></td>
+              <td>06-08 18:00<br/>06-10 18:00</td>
+              <td><span class="status done">投放中</span></td>
+              <td>3.8%</td>
+              <td>¥41</td>
+              <td><button class="btn btn-mini btn-outline" onclick="showPage('workspace');setStep(3)">查看监控</button></td>
+            </tr>
+            <tr>
+              <td><div class="video-cell"><div class="video-thumb"><img src="assets/qijia-shot-preview.png" alt="广告视频缩略图"></div><div class="video-info"><b>报价差异来自哪里</b><span>抖音 · 9:16 · 15 秒</span></div></div></td>
+              <td>齐家网·老房翻新获客视频<br/><span class="tag orange">V2 复盘版</span></td>
+              <td>待排期</td>
+              <td><span class="status wait">待投放</span></td>
+              <td>待投放</td>
+              <td>待投放</td>
+              <td><button class="btn btn-mini btn-outline" onclick="showPage('workspace');setStep(4)">查看版本</button></td>
+            </tr>
+            <tr>
+              <td><div class="video-cell"><div class="video-thumb"><img src="assets/qijia-shot-preview.png" alt="广告视频缩略图"></div><div class="video-info"><b>第一次装修怕被坑</b><span>抖音 · 9:16 · 15 秒</span></div></div></td>
+              <td>齐家网·免费报价短视频<br/><span class="tag blue">V1 初版</span></td>
+              <td>06-07 10:00<br/>06-09 10:00</td>
+              <td><span class="status doing">观察中</span></td>
+              <td>3.2%</td>
+              <td>¥39</td>
+              <td><button class="btn btn-mini btn-outline" onclick="showPage('workspace');setStep(3)">查看监控</button></td>
+            </tr>
+            <tr>
+              <td><div class="video-cell"><div class="video-thumb"><img src="assets/qijia-shot-preview.png" alt="广告视频缩略图"></div><div class="video-info"><b>80 平老房翻新前后对比</b><span>视频号 · 9:16 · 20 秒</span></div></div></td>
+              <td>整装套餐·品牌信任素材<br/><span class="tag dark">V1 初版</span></td>
+              <td>06-05 12:00<br/>06-07 12:00</td>
+              <td><span class="status risk">已衰减</span></td>
+              <td>2.1%</td>
+              <td>¥62</td>
+              <td><button class="btn btn-mini btn-outline" onclick="showPage('workspace');setStep(4)">生成新方向</button></td>
+            </tr>
+          </tbody></table></div>
+        </div>
+        <div class="card panel">
+          <h2 class="section-title">跨项目投放判断</h2>
+          <div class="chart-bars">
+            <div class="chart-row"><span>投放中</span><div class="chart-track"><div class="chart-fill" style="width:58%"></div></div><b>7 条</b></div>
+            <div class="chart-row"><span>待投放</span><div class="chart-track"><div class="chart-fill" style="width:28%"></div></div><b>3 条</b></div>
+            <div class="chart-row"><span>需复盘</span><div class="chart-track"><div class="chart-fill" style="width:18%"></div></div><b>2 条</b></div>
+          </div>
+          <div class="insight-list">
+            <div class="insight-item"><b>正在放量</b><span>齐家网·老房翻新获客视频 V1 初版成本低于目标，可以继续观察并准备 V2 复盘版排期。</span></div>
+            <div class="insight-item"><b>待排期版本</b><span>V2 复盘版来自 V1 投放复盘，建议与 V1 保持同人群、小预算并跑，验证“报价避坑”方向。</span></div>
+            <div class="insight-item"><b>需要新方向</b><span>整装套餐项目点击率下降，建议从“前后对比”转向“费用拆解”或“施工节点透明”。</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="projects" class="page hide">
+      <div class="topbar">
+        <div class="title"><h1>我的项目</h1><p>每一个广告策划方案都是一个项目，沉淀完整流程、投放标签和最终复盘。</p></div>
+        <button class="btn btn-primary" onclick="showPage('create')">新建广告项目</button>
+      </div>
+      <div class="card project-toolbar">
+        <div class="project-tools-left">
+          <select class="project-filter" aria-label="项目筛选"><option>全部项目</option><option>生产中</option><option>待投放</option><option>已完成</option></select>
+          <input class="project-search" aria-label="搜索项目" placeholder="搜索项目名称、行业、负责人" />
+        </div>
+        <select class="project-sort" aria-label="排序方式"><option>最近更新</option><option>项目进度</option><option>线索成本</option></select>
+      </div>
+      <div class="grid projects">
+        <div class="card project-card">
+          <div class="project-tags"><span class="tag green">脚本已生成</span><span class="tag">抖音</span><span class="tag blue">A/B 待投放</span></div>
+          <div class="project-title">齐家网·老房翻新获客视频</div>
+          <div class="project-meta-grid">
+            <div class="project-meta-row"><span>行业</span><b>家装装修</b></div>
+            <div class="project-meta-row"><span>目标</span><b>表单获客</b></div>
+            <div class="project-meta-row"><span>负责人</span><b>运营一组</b></div>
+            <div class="project-meta-row"><span>更新</span><b>今天 14:20</b></div>
+          </div>
+          <div class="progress"><div class="bar" style="width:58%"></div></div>
+          <div class="project-state"><span class="project-dot">脚本已生成</span><span>待进入生产</span></div>
+          <div class="project-actions"><button class="btn btn-primary" onclick="openProjectAtStep(1,'齐家网·老房翻新获客视频')">进入项目工作台</button></div>
+        </div>
+        <div class="card project-card">
+          <div class="project-tags"><span class="tag orange">素材生成中</span><span class="tag">抖音</span><span class="tag">价格焦虑</span></div>
+          <div class="project-title">齐家网·免费报价短视频</div>
+          <div class="project-meta-grid">
+            <div class="project-meta-row"><span>行业</span><b>家装装修</b></div>
+            <div class="project-meta-row"><span>目标</span><b>咨询转化</b></div>
+            <div class="project-meta-row"><span>负责人</span><b>素材团队</b></div>
+            <div class="project-meta-row"><span>更新</span><b>昨天 18:05</b></div>
+          </div>
+          <div class="progress"><div class="bar" style="width:72%"></div></div>
+          <div class="project-state"><span class="project-dot">素材生成中</span><span>待合成</span></div>
+          <div class="project-actions"><button class="btn btn-primary" onclick="openProjectAtStep(1,'齐家网·免费报价短视频')">进入项目工作台</button></div>
+        </div>
+        <div class="card project-card">
+          <div class="project-tags"><span class="tag dark">已完成</span><span class="tag">视频号</span><span class="tag green">可复用</span></div>
+          <div class="project-title">整装套餐·品牌信任素材</div>
+          <div class="project-meta-grid">
+            <div class="project-meta-row"><span>行业</span><b>整装服务</b></div>
+            <div class="project-meta-row"><span>目标</span><b>品牌种草</b></div>
+            <div class="project-meta-row"><span>负责人</span><b>投放团队</b></div>
+            <div class="project-meta-row"><span>更新</span><b>06-05 10:30</b></div>
+          </div>
+          <div class="progress"><div class="bar" style="width:100%"></div></div>
+          <div class="project-state"><span class="project-dot green">已完成</span><span>可查看详情</span></div>
+          <div class="project-actions"><button class="btn btn-primary" onclick="openProjectAtStep(2,'整装套餐·品牌信任素材')">查看详情</button></div>
+        </div>
+        <div class="card project-card">
+          <div class="project-tags"><span class="tag blue">待投放</span><span class="tag">小红书</span><span class="tag">避坑科普</span></div>
+          <div class="project-title">局部翻新·避坑指南素材</div>
+          <div class="project-meta-grid">
+            <div class="project-meta-row"><span>行业</span><b>局部翻新</b></div>
+            <div class="project-meta-row"><span>目标</span><b>留资咨询</b></div>
+            <div class="project-meta-row"><span>负责人</span><b>内容二组</b></div>
+            <div class="project-meta-row"><span>更新</span><b>06-08 11:10</b></div>
+          </div>
+          <div class="progress"><div class="bar" style="width:46%"></div></div>
+          <div class="project-state"><span class="project-dot">方案已出</span><span>待生成素材</span></div>
+          <div class="project-actions"><button class="btn btn-primary" onclick="openProjectAtStep(0,'局部翻新·避坑指南素材')">进入项目工作台</button></div>
+        </div>
+        <div class="card project-card">
+          <div class="project-tags"><span class="tag red">需复盘</span><span class="tag">抖音</span><span class="tag">案例对比</span></div>
+          <div class="project-title">旧房改造·前后对比视频</div>
+          <div class="project-meta-grid">
+            <div class="project-meta-row"><span>行业</span><b>旧房改造</b></div>
+            <div class="project-meta-row"><span>目标</span><b>表单获客</b></div>
+            <div class="project-meta-row"><span>负责人</span><b>投放一组</b></div>
+            <div class="project-meta-row"><span>更新</span><b>06-07 16:45</b></div>
+          </div>
+          <div class="progress"><div class="bar" style="width:88%"></div></div>
+          <div class="project-state"><span class="project-dot">投放观察</span><span>待复盘</span></div>
+          <div class="project-actions"><button class="btn btn-outline" onclick="openProjectAtStep(3,'旧房改造·前后对比视频')">查看监控</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="create" class="page hide">
+      <div class="topbar">
+        <div class="title"><h1>新建广告项目</h1><p>直接描述投放需求，也可以语音输入或上传资料，AI 会自动整理成项目需求单并生成策划方案。</p></div>
+      </div>
+      <div class="create-layout">
+        <div class="card panel">
+          <h2 class="section-title">输入投放需求</h2>
+          <div class="brief-box">
+            <textarea aria-label="投放需求输入">想做一条齐家网老房翻新的抖音获客视频，时长 15 秒左右，主要希望用户留下装修报价表单。目标人群是新房业主、老房翻新用户和首次装修家庭。希望突出免费报价、透明预算、设计师上门量房、装修避坑咨询，不要夸大承诺，也不要用低价诱导。</textarea>
+            <div class="brief-tools">
+              <div class="brief-actions">
+                <button class="btn btn-outline" onclick="startVoiceInput(this)">语音输入</button>
+                <label class="upload-chip">上传文档<input type="file" accept=".doc,.docx,.pdf,.txt,.md" onchange="handleUpload(this,'文档')"></label>
+                <label class="upload-chip">上传音频<input type="file" accept="audio/*" onchange="handleUpload(this,'音频')"></label>
+                <label class="upload-chip">上传图片<input type="file" accept="image/*" onchange="handleUpload(this,'图片')"></label>
+              </div>
+              <span class="tag red">AI 自动整理需求单</span>
+            </div>
+          </div>
+          <div class="brief-example">可输入：推广产品、平台、预算、时长、人群、卖点、禁用表达、参考素材链接，或直接上传已有需求文档、录音和图片资料。</div>
+          <div class="actions"><button class="btn btn-primary" onclick="createProject(this)">创建项目并生成策划方案</button><button class="btn btn-outline" onclick="showPage('projects')">返回我的项目</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="workspace" class="page hide">
+      <div class="topbar">
+        <div class="title"><h1>齐家网·老房翻新获客视频</h1><p id="versionMeta">当前版本：V1 初版　来源：投放需求单　状态：脚本已生成　更新时间：2024-05-13 14:30</p></div>
+        <button class="workspace-return" onclick="showPage('projects')">返回我的项目</button>
+      </div>
+      <div id="versionStrip" class="version-strip"></div>
+      <div class="workspace-flow">
+        <div class="stepper" id="stepper">
+          <button class="step active" data-step="1" onclick="setStep(0)"><b>需求与策略</b><span>识别目标、人群和素材方向</span></button>
+          <button class="step" data-step="2" onclick="setStep(1)"><b>脚本与素材生成</b><span>生成分镜、旁白和画面提示</span></button>
+          <button class="step" data-step="3" onclick="setStep(2)"><b>合成输出</b><span>预览成片并确认交付物</span></button>
+          <button class="step" data-step="4" onclick="setStep(3)"><b>投放与监控</b><span>提交平台并同步效果数据</span></button>
+          <button class="step" data-step="5" onclick="setStep(4)"><b>复盘迭代</b><span>根据结果生成新版本</span></button>
+        </div>
+        <div class="flow-content">
+
+      <div id="step0" class="step-page workspace-layout strategy-pending">
+        <div class="card panel strategy-panel">
+          <h2 class="section-title"><span class="title-icon">☆</span>核心策略结论</h2>
+          <div class="strategy-hero">
+            <p class="strategy-copy">以<strong>价格焦虑</strong>为开头，面向首次装修与老房翻新人群，引导用户<strong>免费获取装修报价</strong>。</p>
+            <div class="strategy-tags">
+              <span class="strategy-chip"><i>单</i> 表单获客</span>
+              <span class="strategy-chip"><i>抖</i> 抖音 15 秒</span>
+              <span class="strategy-chip"><i>转</i> 免费报价转化</span>
+            </div>
+          </div>
+          <div class="ai-summary-grid">
+            <div class="ai-summary-card"><span class="summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg></span><div><span>投放目标</span><b>表单获客</b><span>获取高意向装修用户表单</span></div></div>
+            <div class="ai-summary-card"><span class="summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2"></path><circle cx="12" cy="8" r="4"></circle><path d="M20 21v-2a3 3 0 0 0-2-2.8"></path><path d="M16.5 4.2a3 3 0 0 1 0 5.6"></path></svg></span><div><span>核心人群</span><b>新房业主</b><span>首装 / 老房翻新</span></div></div>
+            <div class="ai-summary-card"><span class="summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg></span><div><span>主推卖点</span><b>透明报价</b><span>免费设计转化</span></div></div>
+            <div class="ai-summary-card"><span class="summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5"></path><path d="M4 5h11l-1.5 4L15 13H4"></path><path d="M18 9h2M19 8v2"></path></svg></span><div><span>推荐打法</span><b>价格焦虑开头</b><span>报价单特写承接</span></div></div>
+          </div>
+          <details class="detail-toggle">
+            <summary>查看 AI 分析详情</summary>
+            <div class="detail-body">
+              <div class="analysis-grid">
+                <div class="analysis-card">
+                  <h4>目标拆解</h4>
+                  <p><strong>表单获客</strong>不是直接成交，素材应降低用户咨询门槛。建议把转化动作收敛成“免费获取装修报价”，避免同时塞入太多服务卖点。</p>
+                </div>
+                <div class="analysis-card">
+                  <h4>人群判断</h4>
+                  <p><strong>新房业主、首次装修、老房翻新</strong>共同焦虑是预算不透明。比起品牌介绍，更适合用报价差异、漏项、后期加钱制造代入感。</p>
+                </div>
+                <div class="analysis-card">
+                  <h4>平台策略</h4>
+                  <p><strong>抖音 15 秒</strong>需要前 3 秒给冲突。建议开头直接抛问题：“装修报价为什么差这么多？”随后用报价单特写承接。</p>
+                </div>
+                <div class="analysis-card">
+                  <h4>风险约束</h4>
+                  <p>需求单要求不夸大承诺、不低价诱导，因此脚本应强调“根据户型和材料拆预算”，避免出现绝对低价或保证省钱表达。</p>
+                </div>
+              </div>
+              <div class="sub-title">素材判断</div>
+              <div class="strategy-list">
+                <div class="strategy-row"><span>主卖点</span><b>透明报价优先，免费设计作为转化引导，不作为开头主钩子。</b></div>
+                <div class="strategy-row"><span>画面证据</span><b>报价单对比、红圈标注、设计师讲解户型图，比纯口播更能支撑可信度。</b></div>
+                <div class="strategy-row"><span>脚本结构</span><b>疑问钩子 → 报价差异 → 专业解释 → 免费报价表单。</b></div>
+              </div>
+            </div>
+          </details>
+          <div class="actions"><button class="btn btn-primary" onclick="confirmStrategy(this)">确认策略，生成方向</button><button class="btn btn-outline" onclick="showPage('create')">编辑需求</button></div>
+        </div>
+        <div id="directionLoading" class="ai-loading hide">
+          <div id="directionThinking" class="ai-thinking" role="status" aria-live="polite"></div>
+        </div>
+        <div id="directionPanel" class="card panel hide">
+          <h2 class="section-title">选择素材方向</h2>
+          <div class="direction-card active" onclick="selectDirection(this)"><span class="score">62% 同类用户选择</span><h4>价格焦虑型</h4><p>用“同一套房三份报价差很多”做开头冲突，承接免费报价表单。适合表单获客，因为用户会自然想知道自己家预算。</p></div>
+          <div class="direction-card" onclick="selectDirection(this)"><span class="score">31% 同类用户选择</span><h4>避坑科普型</h4><p>从漏项、少报、后期加钱切入，突出专业可信。适合预算较高或老房翻新人群，但前 3 秒冲突弱于报价差异。</p></div>
+          <div class="compact-list" style="margin-top:16px">
+            <div class="compact-row"><span>已选方向</span><b id="selectedDirection">价格焦虑型</b></div>
+            <div class="compact-row"><span>选择原因</span><b>最贴合“表单获客 + 15 秒 + 抖音”的组合，开头冲突强，转化动作顺。</b></div>
+            <div class="compact-row"><span>转化动作</span><b>免费获取装修报价，弱化在线咨询，减少用户决策压力。</b></div>
+          </div>
+          <div class="actions"><button class="btn btn-primary" onclick="generateScriptFromDirection(this)">用该方向生成脚本</button><button class="btn btn-outline" onclick="generateMoreDirections(this)">生成更多方向</button></div>
+        </div>
+      </div>
+
+      <div id="step1" class="step-page script-stage hide">
+        <div class="hide" aria-hidden="true">
+          <b id="scriptDirection">价格焦虑型</b>
+          <b id="scriptStatus">待生成</b>
+          <b id="scriptCount">待生成</b>
+        </div>
+        <div class="card panel">
+          <div class="section-head"><h2 class="section-title">分镜脚本</h2><button class="btn btn-outline" onclick="addShot(this)">新增镜头</button></div>
+          <div id="scriptLoading" class="ai-loading hide">
+            <div id="scriptThinking" class="ai-thinking" role="status" aria-live="polite"></div>
+          </div>
+          <div id="scriptList" class="script-summary"></div>
+          <div class="actions"><button class="btn btn-primary" onclick="composeVideo(this)">一键成片</button><button class="btn btn-outline" onclick="notify('已提交精修服务咨询，齐家运营团队将联系您')">联系精修服务</button></div>
+          <div id="composeLoading" class="ai-loading hide">
+            <div id="composeThinking" class="ai-thinking" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="step3" class="step-page hide">
+        <div class="card panel movie-panel">
+          <div class="movie-copy">
+            <h2 class="section-title">成片信息</h2>
+          </div>
+          <div class="movie-body">
+            <div class="movie-preview">
+              <div class="preview-phone" style="height:420px"><div class="phone-screen"><video src="assets/qijia-ad-output.mp4" controls playsinline preload="metadata"></video></div></div>
+              <div class="movie-actions"><button class="btn btn-primary" onclick="notify('成片已加入下载队列')">下载成片</button><button class="btn btn-outline" onclick="openLaunchPlanModal()">创建投放计划</button></div>
+            </div>
+            <div class="movie-info-list">
+              <div class="movie-info-item"><i class="movie-info-icon">▯</i><span>平台 / 比例</span><b>抖音 · 9:16</b></div>
+              <div class="movie-info-item"><i class="movie-info-icon">◎</i><span>时长 / 目标</span><b>15 秒 · 表单获客</b></div>
+              <div class="movie-info-item"><i class="movie-info-icon">◇</i><span>素材标签</span><b>价格焦虑 / 报价单特写</b></div>
+              <div class="movie-info-item"><i class="movie-info-icon">□</i><span>交付物</span><b>视频、脚本、素材包、标签</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="step4" class="step-page script-stage hide">
+        <div class="card panel">
+          <h2 class="section-title">投放排期与效果监控</h2>
+          <div class="summary-grid">
+            <div class="summary-item"><span>投放版本</span><b id="monitorVersionName">V1 初版</b></div>
+            <div class="summary-item"><span>排期</span><b id="launchScheduleText">06-08 18:00 - 06-10 18:00</b></div>
+            <div class="summary-item"><span>投放预算</span><b id="launchBudgetText">3000 元/天 · 抖音信息流</b></div>
+            <div class="summary-item"><span>投放状态</span><b id="launchStatusText">待投放</b></div>
+          </div>
+          <div class="launch-progress" id="launchProgress">
+            <div class="launch-step active" data-launch="ready" data-index="1"><span>开始投放</span><b>提交到平台</b></div>
+            <div class="launch-step" data-launch="review" data-index="2"><span>平台审核</span><b>等待审核结果</b></div>
+            <div class="launch-step" data-launch="running" data-index="3"><span>投放中</span><b>可开始监控</b></div>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item"><span>监控目标</span><b>表单成本低于 45 元</b></div>
+            <div class="summary-item"><span>平台审核</span><b id="reviewStatusText">尚未提交</b></div>
+          </div>
+          <div class="actions"><button id="launchBtn" class="btn btn-primary" onclick="startLaunch(this)">开始投放</button><button id="monitorBtn" class="btn btn-primary hide" onclick="runMonitor(this)">开始监控</button><button class="btn btn-outline" onclick="notify('已保存排期设置')">保存排期</button></div>
+        </div>
+        <div id="monitorLoading" class="ai-loading hide">
+          <div id="monitorThinking" class="ai-thinking" role="status" aria-live="polite"></div>
+        </div>
+        <div id="monitorResult" class="card panel hide">
+          <h2 class="section-title">监控结果</h2>
+          <div class="monitor-grid">
+            <div class="monitor-card"><span>曝光</span><b>38,420</b><small>达到初始样本量</small></div>
+            <div class="monitor-card"><span>点击率</span><b>3.8%</b><small>高于项目均值 0.6%</small></div>
+            <div class="monitor-card"><span>表单数</span><b>126</b><small>主要来自 25-35 岁新房业主</small></div>
+            <div class="monitor-card"><span>线索成本</span><b>¥41</b><small>低于目标成本 ¥45</small></div>
+          </div>
+          <div class="review-result">
+            <h4>AI 复盘判断</h4>
+            <p>价格焦虑钩子有效，报价单特写带来较高点击；但后半段“免费设计”承接偏弱，评论中多次出现“报价准不准”“会不会后期加钱”。建议第二版保留报价差异开头，强化“按户型拆预算”和“漏项对比”证据。</p>
+          </div>
+          <div class="actions"><button class="btn btn-primary" onclick="generateReviewDirections(this)">基于复盘生成新方向</button></div>
+          <div id="reviewDirectionLoading" class="ai-loading hide">
+            <div id="reviewDirectionThinking" class="ai-thinking" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="step5" class="step-page script-stage hide">
+        <div class="card panel">
+          <h2 class="section-title">复盘生成新版本</h2>
+          <div class="comparison-grid" id="versionCompare"></div>
+          <div class="review-result">
+            <h4>下一轮可选方向</h4>
+            <p>系统根据投放监控结果、评论疑问和同类项目选择情况，给出下一版可测试的素材方向。选择一个方向后，会在当前项目下生成新的版本。</p>
+            <div class="table-wrap review-table">
+              <table class="task-table">
+                <thead><tr><th>可选方向</th><th>同类项目选择</th><th>适合验证的问题</th><th>操作</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><b>报价避坑型</b><small>承接 V1 的价格焦虑</small></td>
+                    <td>62% 同类家装获客项目选择。评论中关注报价准不准、会不会后期加钱，适合强化漏项和材料差异解释。</td>
+                    <td>用户是否更愿意留下户型信息获取详细报价。</td>
+                    <td><button class="btn btn-mini btn-primary" onclick="createVersionFromReview(this,'报价避坑型','报价差异来自漏项、材料和施工项')">生成 V2</button></td>
+                  </tr>
+                  <tr>
+                    <td><b>合同避坑型</b><small>从报价延伸到签约风险</small></td>
+                    <td>31% 同类家装获客项目选择。保留装修焦虑，但把重点放到合同漏项、增项条款和预算不可控，能提高咨询意愿。</td>
+                    <td>用户是否从“看报价”升级为“想要专业把关”。</td>
+                    <td><button class="btn btn-mini btn-outline" onclick="createVersionFromReview(this,'合同避坑型','装修合同漏项和增项条款容易导致预算失控')">生成 V2</button></td>
+                  </tr>
+                  <tr>
+                    <td><b>老房翻新案例型</b><small>强化真实案例和信任感</small></td>
+                    <td>18% 同类家装获客项目选择。当前素材点击不错但信任承接偏弱，可以用老房翻新前后变化和真实预算拆解增强可信度。</td>
+                    <td>用户是否更相信真实案例，而不只是价格钩子。</td>
+                    <td><button class="btn btn-mini btn-outline" onclick="createVersionFromReview(this,'老房翻新案例型','用真实翻新案例和预算拆解建立信任')">生成 V2</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div id="versionLoading" class="ai-loading hide">
+            <div id="versionThinking" class="ai-thinking" role="status" aria-live="polite"></div>
+          </div>
+          <div class="actions"><button class="btn btn-outline" onclick="setStep(3)">返回监控结果</button></div>
+        </div>
+      </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<div id="drawerMask" class="drawer-mask" onclick="closeAssetDrawer()"></div>
+<div id="launchPlanModal" class="modal-mask" onclick="closeLaunchPlanModal()">
+  <div class="plan-modal" role="dialog" aria-modal="true" aria-labelledby="launchPlanTitle" onclick="event.stopPropagation()">
+    <h2 id="launchPlanTitle">创建投放计划</h2>
+    <div class="plan-form">
+      <div class="field">
+        <label for="planPlatform">平台</label>
+        <select id="planPlatform">
+          <option>抖音信息流</option>
+          <option>小红书信息流</option>
+          <option>视频号广告</option>
+          <option>快手信息流</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="planBudget">预算</label>
+        <input id="planBudget" value="3000 元/天" />
+      </div>
+      <div class="field">
+        <label for="planSchedule">排期</label>
+        <input id="planSchedule" value="06-08 18:00 - 06-10 18:00" />
+      </div>
+    </div>
+    <div class="plan-actions">
+      <button class="btn btn-outline" onclick="closeLaunchPlanModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmLaunchPlan()">确认</button>
+    </div>
+  </div>
+</div>
+<aside id="assetDrawer" class="asset-drawer" aria-live="polite">
+  <div class="drawer-head"><div><h2 id="drawerTitle">素材结果</h2><p id="drawerMeta">来源与类型</p></div><button class="btn btn-outline" onclick="closeAssetDrawer()">关闭</button></div>
+  <div id="drawerPreview" class="media-preview"></div>
+  <div class="compact-list">
+    <div class="compact-row"><span>来源</span><b id="drawerSource"></b></div>
+    <div class="compact-row"><span>状态</span><b id="drawerStatus"></b></div>
+    <div class="compact-row"><span>说明</span><b id="drawerDesc"></b></div>
+  </div>
+</aside>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+  const pages=['home','dashboard','projects','create','workspace'];
+  const stepIds=['step0','step1','step3','step4','step5'];
+  let revealedSteps=new Set([0]);
+  let navScrollBound=false;
+  function showPage(id, btn){
+    pages.forEach(p=>document.getElementById(p).classList.toggle('hide',p!==id));
+    document.querySelector('.app').classList.toggle('home-mode',id==='home');
+    document.querySelector('.main').classList.toggle('workspace-shell',id==='workspace');
+    const activeTop=id==='create'||id==='workspace'?'projects':id;
+    document.querySelectorAll('.home-nav button').forEach((b)=>b.classList.toggle('active',b.dataset.page===activeTop));
+    if(btn) btn.classList.add('active');
+    window.scrollTo(0,0);
+    if(id==='workspace') bindResultNavScroll();
+  }
+  function applyRevealedSteps(){
+    stepIds.forEach((id,idx)=>{
+      const page=document.getElementById(id);
+      if(page) page.classList.toggle('hide',!revealedSteps.has(idx));
+    });
+    document.querySelectorAll('.step').forEach((el,idx)=>{
+      el.classList.toggle('hide',!revealedSteps.has(idx));
+    });
+  }
+  function updateStepNav(activeIndex){
+    document.querySelectorAll('.step').forEach((el,idx)=>{
+      el.classList.toggle('active',idx===activeIndex);
+      el.classList.toggle('done',revealedSteps.has(idx)&&idx<activeIndex);
+    });
+  }
+  function syncNavFromScroll(){
+    const container=document.querySelector('#workspace .flow-content');
+    if(!container||document.getElementById('workspace').classList.contains('hide')) return;
+    const containerTop=container.getBoundingClientRect().top;
+    let activeIndex=0;
+    let bestDistance=Number.POSITIVE_INFINITY;
+    stepIds.forEach((id,idx)=>{
+      if(!revealedSteps.has(idx)) return;
+      const el=document.getElementById(id);
+      if(!el||el.classList.contains('hide')) return;
+      const distance=Math.abs(el.getBoundingClientRect().top-containerTop-12);
+      if(distance<bestDistance){
+        bestDistance=distance;
+        activeIndex=idx;
+      }
+    });
+    updateStepNav(activeIndex);
+  }
+  function bindResultNavScroll(){
+    const container=document.querySelector('#workspace .flow-content');
+    if(!container||navScrollBound) return;
+    navScrollBound=true;
+    container.addEventListener('scroll',()=>window.requestAnimationFrame(syncNavFromScroll),{passive:true});
+    syncNavFromScroll();
+  }
+  function revealStep(i, options={}){
+    revealedSteps.add(i);
+    applyRevealedSteps();
+    updateStepNav(i);
+    if(options.scroll) scrollToResult(stepIds[i]);
+    else syncNavFromScroll();
+  }
+  function setStep(i){
+    if(!revealedSteps.has(i)){
+      notify('该步骤完成后会出现在工作区');
+      return;
+    }
+    updateStepNav(i);
+    scrollToResult(stepIds[i]);
+  }
+  function syncWorkspaceForProject(targetStep, title){
+    const workspaceTitle=document.querySelector('#workspace .title h1');
+    if(workspaceTitle&&title) workspaceTitle.textContent=title;
+    activeVersion=0;
+
+    directionGenerated=true;
+    document.getElementById('directionPanel').classList.remove('hide');
+    document.getElementById('directionLoading').classList.add('hide');
+    document.getElementById('step0').classList.remove('strategy-pending');
+    applyVersionDirection();
+
+    if(targetStep>=1){
+      scriptGenerated=true;
+      document.getElementById('scriptStatus').textContent='已按选中方向生成脚本';
+      renderScripts();
+    }else{
+      scriptGenerated=false;
+      document.getElementById('scriptStatus').textContent='方向已生成，待生成脚本';
+      document.getElementById('scriptCount').textContent='待生成';
+      document.getElementById('scriptList').innerHTML='';
+    }
+
+    const current=versions[activeVersion];
+    current.adStatus=targetStep>=3?'投放中':'待投放';
+    document.getElementById('composeLoading').classList.add('hide');
+    stopAiWaterfall('composeThinking');
+    document.getElementById('monitorLoading').classList.add('hide');
+    document.getElementById('reviewDirectionLoading').classList.add('hide');
+    document.getElementById('versionLoading').classList.add('hide');
+    stopAiWaterfall('reviewDirectionThinking');
+    stopAiWaterfall('versionThinking');
+    document.getElementById('monitorResult').classList.toggle('hide',targetStep<3);
+    renderVersions();
+  }
+  function openProjectAtStep(targetStep, title){
+    const lastStep=stepIds.length-1;
+    const step=Math.max(0,Math.min(targetStep,lastStep));
+    revealedSteps=new Set(Array.from({length:step+1},(_,idx)=>idx));
+    applyRevealedSteps();
+    syncWorkspaceForProject(step,title);
+    showPage('workspace');
+    setStep(step);
+  }
+  let directionGenerated=false;
+  let scriptGenerated=false;
+  let activeVersion=0;
+  const versions=[
+    {name:'V1 初版',source:'投放需求单',status:'已合成',adStatus:'待投放',direction:'价格焦虑型',summary:'装修报价为什么差这么多？',ctr:'3.8%',cost:'¥41',forms:'126'}
+  ];
+  function renderVersions(){
+    document.getElementById('versionStrip').innerHTML=versions.map((v,i)=>`<button class="version-card ${i===activeVersion?'active':''}" onclick="switchVersion(${i})"><b>${v.name}</b><span>${v.direction} · ${v.source}</span><small>${v.status}</small></button>`).join('');
+    const current=versions[activeVersion];
+    document.getElementById('versionMeta').textContent=`当前版本：${current.name}　来源：${current.source}　状态：${current.status}　更新时间：2024-05-13 14:30`;
+    const monitorName=document.getElementById('monitorVersionName');
+    if(monitorName) monitorName.textContent=current.name;
+    renderLaunchStatus();
+    renderVersionCompare();
+  }
+  function switchVersion(i){
+    activeVersion=i;
+    const current=versions[activeVersion];
+    document.getElementById('selectedDirection').textContent=current.direction;
+    document.getElementById('scriptDirection').textContent=current.direction;
+    renderVersions();
+    notify('已切换到 '+current.name);
+  }
+  function renderVersionCompare(){
+    const box=document.getElementById('versionCompare');
+    if(!box) return;
+    box.innerHTML=versions.map((v,i)=>`<div class="compare-card ${i===activeVersion?'active':''}"><h4>${v.name}</h4><p>来源：${v.source}<br/>方向：${v.direction}<br/>核心表达：${v.summary}</p><div class="compare-metrics"><div><span>点击率</span><b>${v.ctr}</b></div><div><span>线索成本</span><b>${v.cost}</b></div><div><span>表单数</span><b>${v.forms}</b></div></div></div>`).join('');
+  }
+  function renderLaunchStatus(){
+    const statusText=document.getElementById('launchStatusText');
+    if(!statusText) return;
+    const current=versions[activeVersion];
+    const adStatus=current.adStatus||'待投放';
+    const reviewText=document.getElementById('reviewStatusText');
+    const launchBtn=document.getElementById('launchBtn');
+    const monitorBtn=document.getElementById('monitorBtn');
+    const progress=document.getElementById('launchProgress');
+    statusText.textContent=adStatus;
+    if(reviewText) reviewText.textContent=adStatus==='待投放'?'尚未提交':adStatus==='审核中'?'平台审核中':adStatus==='投放中'?'审核通过，正在投放':'已完成监控';
+    if(progress){
+      const width=adStatus==='待投放'?'0%':adStatus==='审核中'?'calc(33.34% - 8px)':'calc(66.68% - 16px)';
+      progress.style.setProperty('--launch-progress',width);
+    }
+    document.querySelectorAll('.launch-step').forEach(step=>{
+      const key=step.dataset.launch;
+      const isReady=key==='ready';
+      const isReview=key==='review';
+      const isRunning=key==='running';
+      step.classList.toggle('active',(adStatus==='待投放'&&isReady)||(adStatus==='审核中'&&isReview)||(adStatus!=='待投放'&&adStatus!=='审核中'&&isRunning));
+      step.classList.toggle('done',(adStatus==='审核中'&&isReady)||((adStatus==='投放中'||adStatus==='监控中'||adStatus==='已复盘')&&(isReady||isReview)));
+    });
+    if(launchBtn){
+      launchBtn.classList.toggle('hide',adStatus!=='待投放');
+    }
+    if(monitorBtn){
+      monitorBtn.classList.toggle('hide',adStatus!=='投放中');
+    }
+  }
+  function setButtonLoading(btn, loadingText){
+    if(!btn) return ()=>{};
+    const oldText=btn.textContent;
+    btn.classList.add('is-loading');
+    btn.textContent=loadingText;
+    return ()=>{
+      btn.classList.remove('is-loading');
+      btn.textContent=oldText;
+    };
+  }
+  const thinkingTimers={};
+  function stopAiWaterfall(id){
+    (thinkingTimers[id]||[]).forEach(clearTimeout);
+    thinkingTimers[id]=[];
+  }
+  function renderThinkingItems(list, items, activeIndex){
+    list.innerHTML=items.map((text,idx)=>`<div class="thinking-item ${idx<activeIndex?'done':idx===activeIndex?'active':''}">${text}</div>`).join('');
+  }
+  function startAiWaterfall(id, title, steps, interval=900){
+    stopAiWaterfall(id);
+    const box=document.getElementById(id);
+    if(!box) return;
+    const startedAt=Date.now();
+    box.innerHTML=`<h3>思考中...</h3><div class="thinking-list"></div>`;
+    const list=box.querySelector('.thinking-list');
+    const visible=[];
+    steps.forEach((step,idx)=>{
+      const timer=setTimeout(()=>{
+        visible.push(step);
+        box.querySelector('h3').textContent=`已思考 ${Math.max(1,Math.round((Date.now()-startedAt)/1000))} 秒⌄`;
+        renderThinkingItems(list, visible, visible.length-1);
+      },idx*interval);
+      thinkingTimers[id].push(timer);
+    });
+    const finalTimer=setTimeout(()=>renderThinkingItems(list, visible, steps.length),steps.length*interval+120);
+    thinkingTimers[id].push(finalTimer);
+  }
+  const directionThinkingSteps=[
+    '读取投放目标、平台和预算信息',
+    '识别人群标签：新房业主、老房翻新',
+    '提取转化动作：免费获取装修报价',
+    '判断下一版优化方向'
+  ];
+  const scriptThinkingSteps=[
+    '锁定素材方向：价格焦虑型',
+    '拆出前 3 秒冲突和转化动作',
+    '匹配报价单特写、户型图讲解等画面证据',
+    '生成镜头、字幕和旁白'
+  ];
+  const composeThinkingSteps=[
+    '读取分镜脚本、旁白和字幕时间轴',
+    '匹配报价单特写、设计师讲解等视频素材',
+    '合成 9:16 竖版画面并校准节奏',
+    '生成封面、标签和交付物清单'
+  ];
+  const monitorThinkingSteps=[
+    '读取曝光、点击和表单成本',
+    '识别评论高频疑问和线索质量',
+    '对比同类家装获客项目表现',
+    '判断下一版优化方向'
+  ];
+  const reviewDirectionThinkingSteps=[
+    '读取投放复盘、评论疑问和线索成本',
+    '保留表现好的报价差异开头',
+    '筛选漏项解释、合同避坑和真实案例方向',
+    '生成下一轮可测试方向'
+  ];
+  const versionThinkingSteps=[
+    '确认选中的复盘方向和验证问题',
+    '继承上一版有效素材标签和人群',
+    '生成新版本策略、来源和投放状态',
+    '同步到项目版本记录'
+  ];
+  function scrollToResult(id){
+    const el=document.getElementById(id);
+    const container=document.querySelector('#workspace .flow-content');
+    if(!el) return;
+    if(container&&container.contains(el)){
+      const containerTop=container.getBoundingClientRect().top;
+      const targetTop=el.getBoundingClientRect().top;
+      container.scrollTo({top:container.scrollTop+targetTop-containerTop,behavior:'smooth'});
+      window.setTimeout(syncNavFromScroll,280);
+      return;
+    }
+    el.scrollIntoView({behavior:'smooth',block:'start'});
+    window.setTimeout(syncNavFromScroll,280);
+  }
+  function resetDirectionPanel(){
+    directionGenerated=false;
+    const step=document.getElementById('step0');
+    step.classList.add('strategy-pending');
+    document.getElementById('directionLoading').classList.add('hide');
+    document.getElementById('directionPanel').classList.add('hide');
+  }
+  function applyVersionDirection(){
+    const current=versions[activeVersion];
+    document.getElementById('selectedDirection').textContent=current.direction;
+    document.getElementById('scriptDirection').textContent=current.direction;
+    const directionCopy={
+      '价格焦虑型':'用“同一套房三份报价差很多”做开头冲突，承接免费报价表单。适合表单获客，因为用户会自然想知道自己家预算。',
+      '报价避坑型':'延续报价差异开头，重点解释漏项、材料和施工项目差异，回应投放评论里的“报价准不准、会不会后期加钱”。',
+      '合同避坑型':'从报价延伸到签约风险，用合同漏项、增项条款和预算不可控制造代入感，承接专业把关和在线咨询。',
+      '老房翻新案例型':'用真实老房翻新前后对比和预算拆解增强信任感，适合把点击兴趣转成更稳定的留资意愿。'
+    };
+    const cards=document.querySelectorAll('#directionPanel .direction-card');
+    if(cards[0]){
+      cards[0].querySelector('h4').textContent=current.direction;
+      cards[0].querySelector('p').textContent=directionCopy[current.direction]||directionCopy['价格焦虑型'];
+    }
+  }
+  function confirmStrategy(btn){
+    const stop=setButtonLoading(btn,'AI 分析中');
+    const step=document.getElementById('step0');
+    step.classList.remove('strategy-pending');
+    document.getElementById('directionLoading').classList.remove('hide');
+    startAiWaterfall('directionThinking','AI 正在分析',directionThinkingSteps);
+    setTimeout(()=>{
+      stop();
+      stopAiWaterfall('directionThinking');
+      directionGenerated=true;
+      document.getElementById('directionLoading').classList.add('hide');
+      document.getElementById('directionPanel').classList.remove('hide');
+      applyVersionDirection();
+      scrollToResult('directionPanel');
+      notify('已生成素材方向');
+    },4600);
+  }
+  function selectDirection(el){
+    document.querySelectorAll('.direction-card').forEach(d=>d.classList.remove('active'));
+    el.classList.add('active');
+    const name=el.querySelector('h4').textContent;
+    document.getElementById('selectedDirection').textContent=name;
+    document.getElementById('scriptDirection').textContent=name;
+    document.getElementById('scriptStatus').textContent='方向已选择，建议重新生成脚本';
+    notify('已选中素材方向：'+name);
+  }
+  function notify(text){
+    const toast=document.getElementById('toast');
+    toast.textContent=text;
+    toast.classList.add('show');
+    clearTimeout(window.toastTimer);
+    window.toastTimer=setTimeout(()=>toast.classList.remove('show'),2200);
+  }
+  function startVoiceInput(btn){
+    const stop=setButtonLoading(btn,'录音中');
+    setTimeout(()=>{
+      stop();
+      notify('语音已识别并补充到需求中');
+    },900);
+  }
+  function handleUpload(input, type){
+    const file=input.files&&input.files[0];
+    if(!file) return;
+    notify(`${type}已上传：${file.name}`);
+  }
+  function createProject(btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    setTimeout(()=>{
+      stop();
+      showPage('workspace');
+      revealedSteps=new Set([0]);
+      applyRevealedSteps();
+      setStep(0);
+      resetDirectionPanel();
+      document.getElementById('composeLoading').classList.add('hide');
+      stopAiWaterfall('composeThinking');
+      document.getElementById('reviewDirectionLoading').classList.add('hide');
+      document.getElementById('versionLoading').classList.add('hide');
+      stopAiWaterfall('reviewDirectionThinking');
+      stopAiWaterfall('versionThinking');
+      document.getElementById('scriptStatus').textContent='待生成';
+      document.getElementById('scriptCount').textContent='待生成';
+      document.getElementById('scriptList').innerHTML='';
+      scriptGenerated=false;
+      activeVersion=0;
+      renderVersions();
+      notify('项目已创建，策划方案已生成');
+    },800);
+  }
+  function saveProject(){notify('项目已保存，当前版本 V1.2');}
+  const taskRows=[
+    ['镜头1视频片段','镜头 1｜画面描述 + 视觉提示 + 字幕/旁白文案','视频生成','wait','待生成'],
+    ['镜头2视频片段','镜头 2｜画面描述 + 视觉提示 + 字幕/旁白文案','视频生成','wait','待生成'],
+    ['镜头3视频片段','镜头 3｜画面描述 + 视觉提示 + 字幕/旁白文案','视频生成','wait','待生成'],
+    ['可选：全片旁白音频','分镜脚本｜旁白文案','独立音频','wait','待生成'],
+    ['可选：字幕文件','分镜脚本｜字幕文案','独立字幕','wait','待生成']
+  ];
+  function renderTasks(){
+    const taskBody=document.querySelector('#taskTable tbody');
+    if(!taskBody) return;
+    taskBody.innerHTML=taskRows.map((r,i)=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><span class="status ${r[3]}">${r[4]}</span></td><td><button class="btn btn-mini btn-outline" onclick="generateTask(${i}, this)">生成</button> <button class="btn btn-mini btn-outline" onclick="openAssetDrawer(${i})">查看素材</button></td></tr>`).join('');
+  }
+  function generateMoreDirections(btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    setTimeout(()=>{
+      stop();
+      const panel=document.getElementById('directionPanel');
+      if(!panel.querySelector('[data-extra-direction]')){
+        const extra=document.createElement('div');
+        extra.className='direction-card';
+        extra.setAttribute('data-extra-direction','true');
+        extra.setAttribute('onclick','selectDirection(this)');
+        extra.innerHTML='<span class="score">18% 同类用户选择</span><h4>真实案例型</h4><p>用老房翻新前后对比强调结果感，适合品牌信任和案例种草；但对“表单获客”的即时转化刺激弱于报价焦虑。</p>';
+        panel.insertBefore(extra,panel.querySelector('.compact-list'));
+      }
+      notify('已生成更多素材方向');
+    },700);
+  }
+  function generateScriptFromDirection(btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    setTimeout(()=>{
+      stop();
+      revealStep(1,{scroll:true});
+      generateScript();
+    },450);
+  }
+  function generateTask(i, btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    setTimeout(()=>{
+      stop();
+      taskRows[i][3]='doing';taskRows[i][4]='生成中';renderTasks();
+      notify(taskRows[i][0]+'已开始生成');
+    },500);
+  }
+  function openAssetDrawer(i){
+    const r=taskRows[i];
+    const isAudio=r[2].includes('音频');
+    const isSubtitle=r[2].includes('字幕');
+    document.getElementById('drawerTitle').textContent=r[0];
+    document.getElementById('drawerMeta').textContent=`${r[2]} · ${r[4]}`;
+    document.getElementById('drawerSource').textContent=r[1];
+    document.getElementById('drawerStatus').textContent=r[4];
+    document.getElementById('drawerDesc').textContent=isAudio?'这里展示完整旁白音频，可试听并用于最终合成。':isSubtitle?'这里展示完整字幕文件，可检查样式和文案后用于最终合成。':'这里展示该镜头生成的画面素材，可用于判断画面方向是否采纳。';
+    const preview=document.getElementById('drawerPreview');
+    preview.className='media-preview'+(isAudio?' audio':isSubtitle?'':' image');
+    preview.innerHTML=isAudio?'<div><b>完整音频预览</b><span>00:00 / 00:15 · 波形占位</span></div>':isSubtitle?'<div><b>字幕文件预览</b><span>逐句字幕时间轴占位</span></div>':'<img src="assets/qijia-shot-preview.png" alt="镜头素材预览">';
+    document.getElementById('drawerMask').classList.add('show');
+    document.getElementById('assetDrawer').classList.add('show');
+  }
+  function closeAssetDrawer(){
+    document.getElementById('drawerMask').classList.remove('show');
+    document.getElementById('assetDrawer').classList.remove('show');
+  }
+  function openLaunchPlanModal(){
+    document.getElementById('launchPlanModal').classList.add('show');
+  }
+  function closeLaunchPlanModal(){
+    document.getElementById('launchPlanModal').classList.remove('show');
+  }
+  function confirmLaunchPlan(){
+    const platform=document.getElementById('planPlatform').value;
+    const budget=document.getElementById('planBudget').value;
+    const schedule=document.getElementById('planSchedule').value;
+    document.getElementById('launchScheduleText').textContent=schedule;
+    document.getElementById('launchBudgetText').textContent=`${budget} · ${platform}`;
+    closeLaunchPlanModal();
+    notify('投放计划已创建');
+    revealStep(3,{scroll:true});
+  }
+  function batchGenerate(btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    setTimeout(()=>{
+      stop();
+      taskRows.forEach((r,i)=>{if(i<5){r[3]=i<2?'done':'doing';r[4]=i<2?'已完成':'生成中';}});
+      renderTasks();
+      notify('已按分镜批量生成视频素材');
+      setTimeout(()=>setStep(1),450);
+    },650);
+  }
+  function composeVideo(btn){
+    const stop=setButtonLoading(btn,'合成中');
+    document.getElementById('composeLoading').classList.remove('hide');
+    startAiWaterfall('composeThinking','AI 正在合成成片',composeThinkingSteps);
+    scrollToResult('composeLoading');
+    setTimeout(()=>{
+      stop();
+      stopAiWaterfall('composeThinking');
+      document.getElementById('composeLoading').classList.add('hide');
+      taskRows.forEach((r)=>{if(r[3]!=='done'){r[3]='done';r[4]='已完成';}});
+      versions[activeVersion].status='已合成';
+      renderVersions();
+      renderTasks();
+      notify('广告视频已合成，进入成片输出');
+      revealStep(2,{scroll:true});
+    },4600);
+  }
+  function runMonitor(btn){
+    const stop=setButtonLoading(btn,'监控中');
+    document.getElementById('monitorLoading').classList.remove('hide');
+    startAiWaterfall('monitorThinking','AI 正在复盘',monitorThinkingSteps);
+    versions[activeVersion].status='投放监控中';
+    versions[activeVersion].adStatus='监控中';
+    renderVersions();
+    setTimeout(()=>{
+      stop();
+      stopAiWaterfall('monitorThinking');
+      document.getElementById('monitorLoading').classList.add('hide');
+      document.getElementById('monitorResult').classList.remove('hide');
+      versions[activeVersion].status='已复盘';
+      versions[activeVersion].adStatus='已复盘';
+      renderVersions();
+      scrollToResult('monitorResult');
+      notify('投放数据已同步，复盘结果已生成');
+    },4600);
+  }
+  function generateReviewDirections(btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    document.getElementById('reviewDirectionLoading').classList.remove('hide');
+    startAiWaterfall('reviewDirectionThinking','AI 正在生成下一版方向',reviewDirectionThinkingSteps);
+    scrollToResult('reviewDirectionLoading');
+    setTimeout(()=>{
+      stop();
+      stopAiWaterfall('reviewDirectionThinking');
+      document.getElementById('reviewDirectionLoading').classList.add('hide');
+      notify('已基于复盘生成下一版方向');
+      revealStep(4,{scroll:true});
+    },4600);
+  }
+  function startLaunch(btn){
+    const stop=setButtonLoading(btn,'提交中');
+    document.getElementById('monitorLoading').classList.add('hide');
+    setTimeout(()=>{
+      stop();
+      versions[activeVersion].adStatus='审核中';
+      versions[activeVersion].status='平台审核中';
+      renderVersions();
+      notify('已提交平台审核');
+      setTimeout(()=>{
+        versions[activeVersion].adStatus='投放中';
+        versions[activeVersion].status='投放中';
+        renderVersions();
+        notify('平台审核通过，已开始投放');
+      },900);
+    },650);
+  }
+  function createVersionFromReview(btn, direction='报价避坑型', summary='报价差异来自漏项、材料和施工项'){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    document.getElementById('versionLoading').classList.remove('hide');
+    startAiWaterfall('versionThinking','AI 正在生成新版本',versionThinkingSteps);
+    scrollToResult('versionLoading');
+    setTimeout(()=>{
+      stop();
+      stopAiWaterfall('versionThinking');
+      document.getElementById('versionLoading').classList.add('hide');
+      const base=versions[activeVersion];
+      const nextNo=versions.length+1;
+      versions.push({
+        name:`V${nextNo} 复盘版`,
+        source:`来自 ${base.name} 投放复盘生成`,
+        status:'新方向已生成',
+        adStatus:'待投放',
+        direction,
+        summary,
+        ctr:'待投放',
+        cost:'待投放',
+        forms:'待投放'
+      });
+      activeVersion=versions.length-1;
+      renderVersions();
+      document.getElementById('directionPanel').classList.remove('hide');
+      document.getElementById('directionLoading').classList.add('hide');
+      document.getElementById('step0').classList.remove('strategy-pending');
+      applyVersionDirection();
+      document.getElementById('scriptStatus').textContent='新方向已生成，待生成脚本';
+      document.getElementById('scriptCount').textContent='待生成';
+      document.getElementById('scriptList').innerHTML='';
+      notify(`${versions[activeVersion].name} 已生成`);
+      setStep(0);
+    },4600);
+  }
+  let scripts=[
+    ['镜头 1','3秒','年轻业主坐在餐桌前，看着三份装修报价单皱眉。','装修报价为什么差这么多？','很多人装修第一步，就被报价绕晕了。','真实家庭场景，暖色灯光，手持报价单，抖音短视频质感。','文生视频'],
+    ['镜头 2','4秒','三张报价单并排展示，价格差异明显，部分项目被红圈标出。','有的漏项，有的少报，有的后期加钱','看似便宜的报价，可能只是少写了很多项目。','报价单特写，红色标注，信息清晰。','生图转视频'],
+    ['镜头 3','4秒','设计师在户型图前给业主讲解报价组成。','先看户型，再算预算','专业设计师会根据户型、需求和材料，拆出真实预算。','设计师讲解户型图，办公室场景，清晰专业。','文生视频'],
+    ['镜头 4','4秒','手机页面展示“免费获取装修报价”表单，用户点击预约。','免费获取装修报价方案','现在预约，免费获取一份适合你家的装修报价方案。','手机操作界面，预约表单，干净明亮。','素材合成']
+  ];
+  function updateScriptMeta(){
+    const seconds=scripts.reduce((sum,s)=>sum+Number.parseInt(s[1],10),0);
+    document.getElementById('scriptCount').textContent=`${scripts.length} 个镜头，共 ${seconds} 秒`;
+  }
+  function renderScripts(){
+    document.getElementById('scriptList').innerHTML=scripts.map((s,i)=>`<div class="script-card"><div class="script-head"><b>${s[0]}</b><span>${s[1]}</span></div><div class="script-row"><div>画面描述</div><div>${s[2]}</div></div><div class="script-row"><div>字幕文案</div><div>${s[3]}</div></div><div class="script-row"><div>旁白文案</div><div>${s[4]}</div></div><div class="script-row"><div>视觉提示</div><div>${s[5]}</div></div><div class="script-row"><div>生成方式</div><div><b>${s[6]}</b></div></div><div class="script-tools"><button class="btn btn-outline" onclick="regenShot(${i}, this)">重新生成</button><button class="btn btn-outline" onclick="deleteShot(${i})">删除镜头</button></div></div>`).join('');
+    updateScriptMeta();
+  }
+  function generateScript(btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    document.getElementById('scriptStatus').textContent='生成中';
+    document.getElementById('scriptLoading').classList.remove('hide');
+    startAiWaterfall('scriptThinking','AI 正在生成脚本',scriptThinkingSteps);
+    setTimeout(()=>{
+      stop();
+      stopAiWaterfall('scriptThinking');
+      document.getElementById('scriptLoading').classList.add('hide');
+      document.getElementById('scriptStatus').textContent='已按选中方向生成脚本';
+      scriptGenerated=true;
+      renderScripts();
+      scrollToResult('scriptList');
+      notify('已基于选中方向生成分镜脚本');
+    },4600);
+  }
+  function regenShot(i, btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    setTimeout(()=>{
+      stop();
+      scripts[i][2]=scripts[i][2]+'（已优化节奏）';
+      renderScripts();
+      notify(scripts[i][0]+'已重新生成');
+    },650);
+  }
+  function addShot(btn){
+    const stop=setButtonLoading(btn,'AI 生成中');
+    setTimeout(()=>{
+      stop();
+    const next=scripts.length+1;
+    scripts.push([`镜头 ${next}`,'3秒','补充一个品牌尾帧或利益点强化画面。','免费获取适合你家的装修报价','留下联系方式，免费获取专属装修报价方案。','手机表单或品牌尾帧，画面干净，信息突出。','素材合成']);
+    document.getElementById('scriptStatus').textContent='已新增镜头，待确认';
+    renderScripts();
+    notify('已新增一个镜头');
+    },650);
+  }
+  function deleteShot(i){
+    if(scripts.length<=1){notify('至少保留一个镜头');return;}
+    const name=scripts[i][0];
+    scripts.splice(i,1);
+    scripts=scripts.map((s,idx)=>[`镜头 ${idx+1}`,s[1],s[2],s[3],s[4],s[5],s[6]]);
+    document.getElementById('scriptStatus').textContent='已删除镜头，待确认';
+    renderScripts();
+    notify(name+'已删除');
+  }
+  renderTasks();
+  renderVersions();
+  setStep(0);
+</script>
+<script src="scripts/home.js"></script>
+</body>
+</html>
